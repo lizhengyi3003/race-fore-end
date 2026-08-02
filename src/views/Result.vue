@@ -104,7 +104,7 @@ function goBack() {
       <el-col :span="8">
         <div class="info-card gauge-card">
           <h3 class="card-title">信用评分（0-1000）</h3>
-          <ScoreGauge :score="result.score" :size="260" :max="1000" />
+          <ScoreGauge :score="result.score" :size="320" :max="1000" />
         </div>
       </el-col>
 

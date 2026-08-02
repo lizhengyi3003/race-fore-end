@@ -13,46 +13,35 @@ const gaugeRef = ref<HTMLElement>()
 
 const maxScore = computed(() => props.max ?? 1000)
 
-const colorStops = computed(() => {
-  const s = props.score / maxScore.value
-  if (s >= 0.7)
-    return [
-      [0.6, '#67c23a'],
-      [0.8, '#b3e19d'],
-      [1, '#e1f3d8'],
-    ]
-  if (s >= 0.5)
-    return [
-      [0.6, '#e6a23c'],
-      [0.8, '#f3d19e'],
-      [1, '#faecd8'],
-    ]
-  return [
-    [0.6, '#f56c6c'],
-    [0.8, '#fab6b6'],
-    [1, '#fde2e2'],
-  ]
-})
+// 弧线按风险等级固定三段分区（对齐业务阈值：<500 红 / 500-700 橙 / ≥700 绿）
+// offset 0 对应 0 分、1 对应 1000 分；用近似 offset 实现硬边界（ECharts 要求 offset 严格升序）
+const colorStops: [number, string][] = [
+  [0, '#f56c6c'],
+  [0.4999, '#f56c6c'],
+  [0.5, '#e6a23c'],
+  [0.6999, '#e6a23c'],
+  [0.7, '#67c23a'],
+  [1, '#67c23a'],
+]
 
-function initChart() {
-  if (!gaugeRef.value) return
-  const chart = echarts.init(gaugeRef.value)
-  chart.setOption({
+function buildOption() {
+  return {
     series: [
       {
         type: 'gauge',
         startAngle: 210,
         endAngle: -30,
-        center: ['50%', '55%'],
-        radius: '90%',
+        center: ['50%', '50%'],
+        radius: '82%',
         min: 0,
         max: maxScore.value,
+        // 0~1000 每 100 一个刻度，配合 320 容器保证标签不重叠
         splitNumber: 10,
         axisLine: {
           show: true,
           lineStyle: {
             width: 18,
-            color: colorStops.value,
+            color: colorStops,
           },
         },
         pointer: {
@@ -60,7 +49,7 @@ function initChart() {
           length: '65%',
           width: 8,
           itemStyle: {
-            color: 'inherit',
+            color: '#1f2d3d',
           },
         },
         axisTick: {
@@ -72,7 +61,7 @@ function initChart() {
           lineStyle: { color: 'inherit', width: 4 },
         },
         axisLabel: {
-          distance: 18,
+          distance: 20,
           color: '#909399',
           fontSize: 12,
         },
@@ -82,15 +71,15 @@ function initChart() {
         },
         title: {
           show: true,
-          offsetCenter: [0, '82%'],
-          fontSize: 16,
+          offsetCenter: [0, '80%'],
+          fontSize: 14,
           color: '#606266',
           fontWeight: 600,
         },
         detail: {
           valueAnimation: true,
-          fontSize: 36,
-          offsetCenter: [0, '58%'],
+          fontSize: 32,
+          offsetCenter: [0, '55%'],
           formatter: '{value}',
           color: 'inherit',
           fontWeight: 700,
@@ -98,30 +87,39 @@ function initChart() {
         data: [{ value: props.score, name: '信用评分' }],
       },
     ],
-  })
-  return chart
+  }
 }
 
-onMounted(() => {
-  const chart = initChart()
-  watch(
-    () => props.score,
-    () => {
-      if (chart) {
-        chart.setOption({
-          series: [
-            {
-              axisLine: { lineStyle: { color: colorStops.value } },
-              data: [{ value: props.score, name: '信用评分' }],
-            },
-          ],
-        })
-      }
+let chart: echarts.ECharts | null = null
+
+function initChart() {
+  if (!gaugeRef.value) return
+  chart = echarts.init(gaugeRef.value)
+  chart.setOption(buildOption())
+}
+
+watch(
+  () => props.score,
+  () => {
+    if (chart) {
+      // 完整重建配置，确保指针 / 刻度 / 数值随新评分同步更新
+      chart.setOption(buildOption())
     }
-  )
+  }
+)
+
+onMounted(() => {
+  initChart()
 })
 </script>
 
 <template>
-  <div ref="gaugeRef" :style="{ width: size ? size + 'px' : '100%', height: size ? size + 'px' : '240px' }" />
+  <div
+    ref="gaugeRef"
+    :style="{
+      width: size ? size + 'px' : '100%',
+      height: size ? size + 'px' : '240px',
+      margin: '0 auto',
+    }"
+  />
 </template>
