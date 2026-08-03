@@ -101,7 +101,7 @@ const advantages = [
       </div>
       <div class="tech-flow info-card">
         <el-steps :active="5" align-center>
-          <el-step title="数据采集" description="六大类21项替代数据指标" />
+          <el-step title="数据采集" description="四大维度15项替代数据指标" />
           <el-step title="特征筛选" description="IV值评估 / VIF共线性诊断" />
           <el-step title="WOE编码" description="连续变量分箱与证据权重转换" />
           <el-step title="Logistic建模" description="回归系数 → 0-1000分评分卡" />

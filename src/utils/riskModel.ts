@@ -1,15 +1,13 @@
 import type { RiskInput, RiskResult, FactorContribution, Deduction } from '@/api/types'
 
 /**
- * 涉农信贷风险评分卡模型（前端模拟实现）
+ * 涉农信贷风险评分卡模型（前端兜底实现，对齐文档 3.3.2 四大维度 15 项）
  *
- * 对齐商业计划书技术方案：
- * 1. 六大类 21 项替代数据指标体系
- * 2. 每项指标经分档（WOE 思想）映射为 0-100 子得分
- * 3. 加权汇总 × 10 得到 0-1000 分标准信用评分（评分卡刻度）
- * 4. 违约概率通过 Logistic sigmoid 映射
- * 5. 风险等级：≥700 低风险(绿) / 500-700 中风险(黄) / <500 高风险(红)
- * 6. 输出前三项扣分原因，支撑信贷员人工复核
+ * 1. 15 项指标分档（文档量化标准归一化 0-100）
+ * 2. 加权汇总 × 10 得到 0-1000 分标准信用评分
+ * 3. 违约概率通过 sigmoid 映射（评分中心 600，B=72.13）
+ * 4. 风险等级：≥700 低风险 / 500-700 中风险 / <500 高风险
+ * 5. 输出前三项扣分原因，支撑信贷员人工复核
  */
 
 // --- 工具函数 ---
@@ -29,283 +27,196 @@ function binScore(value: number, bins: [number, number, number][]): number {
   return 10
 }
 
-// ================= 各指标评分函数 =================
+/** 分类映射 */
+function catScore(value: string, map: Record<string, number>, fallback: number): number {
+  return map[value] ?? fallback
+}
 
-/** 土地确权面积（亩） */
-function scoreLandArea(area: number): number {
+// ================= 各指标评分函数（对齐 indicators.py RULE_SCORERS）=================
+
+/** 确权耕地总面积（亩）：>300 100 / 200-300 80 / 50-200 48 / <50 20 */
+function scoreLandConfirmedArea(area: number): number {
   return binScore(area, [
     [0, 50, 20],
-    [50, 200, 55],
-    [200, 500, 80],
-    [500, Infinity, 95],
+    [50, 200, 48],
+    [200, 300, 80],
+    [300, Infinity, 100],
   ])
 }
 
-/** 土地流转年限（年） */
-function scoreTransferYears(years: number): number {
+/** 土地流转合同年限（年）：≥3 100 / 1-3 50 / <1 10 */
+function scoreLandTransferYears(years: number): number {
   return binScore(years, [
-    [0, 1, 20],
+    [0, 1, 10],
     [1, 3, 50],
-    [3, 5, 75],
-    [5, Infinity, 95],
+    [3, Infinity, 100],
   ])
 }
 
-/** 种植结构 */
-function scorePlanting(structure: string): number {
-  const map: Record<string, number> = {
-    主粮种植: 70,
-    经济作物: 85,
-    混合经营: 92,
-    设施农业: 82,
-    '': 50,
-  }
-  return map[structure] ?? 50
+/** 土地流转稳定性 */
+function scoreLandTransferStability(s: string): number {
+  return catScore(s, { 稳定: 100, 小幅调整: 40, 频繁变更: 0, '': 40 }, 40)
 }
 
-/** 土地规模利用率（%） */
-function scoreUtilization(rate: number): number {
-  return binScore(rate, [
-    [0, 50, 40],
-    [50, 70, 60],
-    [70, 90, 85],
-    [90, Infinity, 98],
+/** 黑土地保护性耕作覆盖比例（%） */
+function scoreBlackSoilProtection(p: number): number {
+  return binScore(p, [
+    [0, 40, 0],
+    [40, 80, 40],
+    [80, Infinity, 100],
   ])
 }
 
-/** 补贴金额归一化（元） */
-function scoreSubsidyAmount(amount: number, ceiling: number): number {
-  if (amount <= 0) return 30
-  return clamp(Math.round((amount / ceiling) * 90 + 10), 10, 100)
-}
-
-/** 农业保险覆盖率（%） */
-function scoreInsuranceCoverage(rate: number): number {
-  return binScore(rate, [
-    [0, 30, 30],
-    [30, 60, 60],
-    [60, 80, 82],
-    [80, Infinity, 98],
+/** 耕地地力保护补贴（元） */
+function scoreGrainSubsidy(v: number): number {
+  return binScore(v, [
+    [0, 1000, 11],
+    [1000, 5000, 33],
+    [5000, 10000, 67],
+    [10000, Infinity, 100],
   ])
 }
 
-/** 历年理赔次数 */
-function scoreClaimCount(count: number): number {
-  if (count <= 0) return 100
-  if (count <= 2) return 60
-  if (count <= 5) return 35
-  return 15
-}
-
-/** 理赔金额占比（%） */
-function scoreClaimRatio(ratio: number): number {
-  return binScore(ratio, [
-    [0, 10, 90],
-    [10, 30, 70],
-    [30, 60, 45],
-    [60, Infinity, 20],
+/** 大型农机购置补贴（元） */
+function scoreMachinerySubsidy(v: number): number {
+  return binScore(v, [
+    [0, 10000, 0],
+    [10000, 50000, 40],
+    [50000, Infinity, 100],
   ])
 }
 
-/** 经营年限（年） */
-function scoreOperatingYears(years: number): number {
-  return binScore(years, [
-    [0, 2, 30],
-    [2, 5, 60],
-    [5, 10, 85],
-    [10, Infinity, 98],
+/** 粮食规模种植专项补贴（元） */
+function scoreGrainScaleSubsidy(v: number): number {
+  return binScore(v, [
+    [0, 5000, 0],
+    [5000, 20000, 42],
+    [20000, Infinity, 100],
   ])
 }
 
-/** 经营范围集中度（主营收入占比 %） */
-function scoreConcentration(ratio: number): number {
-  if (ratio >= 70 && ratio <= 90) return 95
-  if (ratio >= 50 && ratio < 70) return 75
-  if (ratio > 90) return 80
-  if (ratio >= 30 && ratio < 50) return 55
-  return 35
-}
-
-/** 年销售收入（万元） */
-function scoreRevenue(revenue: number): number {
-  return binScore(revenue, [
-    [0, 20, 25],
-    [20, 60, 55],
-    [60, 150, 80],
-    [150, Infinity, 95],
+/** 特色经济作物补贴（元） */
+function scoreSpecialtyCropSubsidy(v: number): number {
+  return binScore(v, [
+    [0, 1000, 0],
+    [1000, Infinity, 100],
   ])
 }
 
-/** 销售收入稳定性 */
-function scoreRevenueStability(stability: string): number {
-  const map: Record<string, number> = {
-    稳定: 98,
-    基本稳定: 80,
-    波动较大: 50,
-    大幅波动: 25,
-    '': 50,
-  }
-  return map[stability] ?? 50
-}
-
-/** 经营者征信状况 */
-function scoreCreditStatus(status: string): number {
-  const map: Record<string, number> = {
-    无不良记录: 98,
-    轻微逾期: 70,
-    多次逾期: 35,
-    严重失信: 10,
-    '': 50,
-  }
-  return map[status] ?? 50
-}
-
-/** 年龄（岁）：25-55 岁青壮年为黄金还款期 */
-function scoreAge(age: number): number {
-  return binScore(age, [
-    [0, 25, 60],
-    [25, 35, 85],
-    [35, 55, 95],
-    [55, 65, 80],
-    [65, Infinity, 55],
+/** 农业保险连续投保年限（年） */
+function scoreInsuranceYears(v: number): number {
+  return binScore(v, [
+    [0, 1, 0],
+    [1, 3, 50],
+    [3, Infinity, 100],
   ])
 }
 
-/** 受教育程度（金融素养代理变量） */
-function scoreEducation(edu: string): number {
-  const map: Record<string, number> = {
-    小学及以下: 40,
-    初中: 65,
-    高中: 85,
-    大专及以上: 95,
-    '': 50,
-  }
-  return map[edu] ?? 50
+/** 历史保险理赔频次（次） */
+function scoreClaimCount(v: number): number {
+  if (v <= 0) return 100
+  if (v <= 1) return 50
+  return 8
 }
 
-/** 家庭成员数量（人）：3-5 人（劳动力充足且负担适中）最佳 */
-function scoreFamilyMembers(count: number): number {
-  return binScore(count, [
-    [0, 1, 40],
-    [1, 3, 75],
-    [3, 5, 95],
-    [5, 7, 80],
-    [7, Infinity, 60],
+/** 设施农业附加保险 */
+function scoreFacilityInsurance(s: string): number {
+  return catScore(s, { 完整投保: 100, 仅基础险: 37, 未投保: 0, '': 37 }, 37)
+}
+
+/** 主体持续经营年限（年） */
+function scoreYearsOperating(v: number): number {
+  return binScore(v, [
+    [0, 2, 14],
+    [2, 5, 50],
+    [5, Infinity, 100],
   ])
 }
 
-/** 历年理赔金额（元）：越高风险越大 */
-function scoreClaimAmount(amount: number): number {
-  return binScore(amount, [
-    [0, 1, 100],
-    [1, 10000, 80],
-    [10000, 50000, 60],
-    [50000, 100000, 40],
-    [100000, Infinity, 20],
+/** 长期农产品收购订单 */
+function scorePurchaseOrder(s: string): number {
+  return catScore(s, { 年度订单: 100, 零散收购: 33, 无稳定渠道: 0, '': 33 }, 33)
+}
+
+/** 农产品年稳定营收（万元） */
+function scoreAnnualRevenue(v: number): number {
+  return binScore(v, [
+    [0, 10, 10],
+    [10, 50, 50],
+    [50, Infinity, 100],
   ])
 }
 
-/** 历史贷款记录（次）：1-5 次良好信用历史最佳，无记录中性 */
-function scoreLoanHistory(count: number): number {
-  return binScore(count, [
-    [0, 1, 55],
-    [1, 3, 80],
-    [3, 5, 90],
-    [5, Infinity, 75],
-  ])
+/** 历年涉农信贷履约记录 */
+function scoreCreditRecord(s: string): number {
+  return catScore(s, { 无逾期: 100, 有逾期: 0, '': 50 }, 50)
 }
 
-/** 历史逾期记录（次）：逾期越多信用越差 */
-function scoreLoanOverdueHistory(count: number): number {
-  if (count <= 0) return 98
-  if (count <= 1) return 60
-  if (count <= 3) return 35
-  return 15
+// 指标权重（对齐 INDICATOR_META：维度权重 × 维度内分值比例）
+const WEIGHTS: Record<string, number> = {
+  landConfirmedArea: 0.136,
+  landTransferYears: 0.109,
+  landTransferStability: 0.081,
+  blackSoilProtection: 0.054,
+  grainSubsidy: 0.088,
+  machinerySubsidy: 0.074,
+  grainScaleSubsidy: 0.059,
+  specialtyCropSubsidy: 0.049,
+  insuranceYears: 0.089,
+  claimCount: 0.067,
+  facilityInsurance: 0.044,
+  yearsOperating: 0.044,
+  purchaseOrder: 0.037,
+  annualRevenue: 0.031,
+  creditRecord: 0.037,
 }
 
 // ================= 主评估函数 =================
 
 export function calculateRiskScore(input: RiskInput): RiskResult {
   const {
-    age = 0,
-    education = '',
-    familyMembers = 0,
     landConfirmedArea = 0,
     landTransferYears = 0,
-    plantingStructure = '',
-    landUtilization = 0,
+    landTransferStability = '',
+    blackSoilProtection = 0,
     grainSubsidy = 0,
     machinerySubsidy = 0,
-    otherSubsidy = 0,
-    insuranceCoverage = 0,
+    grainScaleSubsidy = 0,
+    specialtyCropSubsidy = 0,
+    insuranceYears = 0,
     claimCount = 0,
-    claimAmount = 0,
-    claimRatio = 0,
+    facilityInsurance = '',
     yearsOperating = 0,
-    businessConcentration = 0,
+    purchaseOrder = '',
     annualRevenue = 0,
-    revenueStability = '',
-    creditStatus = '',
-    loanHistory = 0,
-    loanOverdueHistory = 0,
+    creditRecord = '',
   } = input
 
-  // --- 21 项指标子得分与权重 ---
+  // --- 15 项指标子得分与权重 ---
   const indicators: { factor: string; category: string; weight: number; score: number }[] = [
-    { factor: '年龄', category: '户主特征类', weight: 0.04, score: scoreAge(age) },
-    { factor: '受教育程度', category: '户主特征类', weight: 0.05, score: scoreEducation(education) },
-    { factor: '家庭成员数量', category: '户主特征类', weight: 0.03, score: scoreFamilyMembers(familyMembers) },
-    { factor: '土地确权面积', category: '土地经营类', weight: 0.06, score: scoreLandArea(landConfirmedArea) },
-    { factor: '土地流转年限', category: '土地经营类', weight: 0.04, score: scoreTransferYears(landTransferYears) },
-    { factor: '种植结构', category: '土地经营类', weight: 0.04, score: scorePlanting(plantingStructure) },
-    { factor: '土地规模利用率', category: '土地经营类', weight: 0.05, score: scoreUtilization(landUtilization) },
-    { factor: '粮食直补金额', category: '农业补贴类', weight: 0.04, score: scoreSubsidyAmount(grainSubsidy, 5000) },
-    {
-      factor: '农机购置补贴',
-      category: '农业补贴类',
-      weight: 0.04,
-      score: scoreSubsidyAmount(machinerySubsidy, 30000),
-    },
-    { factor: '其他涉农补贴', category: '农业补贴类', weight: 0.03, score: scoreSubsidyAmount(otherSubsidy, 5000) },
-    {
-      factor: '农业保险覆盖率',
-      category: '农业保险类',
-      weight: 0.08,
-      score: scoreInsuranceCoverage(insuranceCoverage),
-    },
-    { factor: '历年理赔次数', category: '农业保险类', weight: 0.04, score: scoreClaimCount(claimCount) },
-    { factor: '历年理赔金额', category: '农业保险类', weight: 0.05, score: scoreClaimAmount(claimAmount) },
-    { factor: '理赔金额占比', category: '农业保险类', weight: 0.05, score: scoreClaimRatio(claimRatio) },
-    { factor: '经营年限', category: '经营稳定性类', weight: 0.07, score: scoreOperatingYears(yearsOperating) },
-    {
-      factor: '经营范围集中度',
-      category: '经营稳定性类',
-      weight: 0.05,
-      score: scoreConcentration(businessConcentration),
-    },
-    { factor: '年销售收入', category: '经营稳定性类', weight: 0.06, score: scoreRevenue(annualRevenue) },
-    {
-      factor: '销售收入稳定性',
-      category: '经营稳定性类',
-      weight: 0.05,
-      score: scoreRevenueStability(revenueStability),
-    },
-    { factor: '经营者征信', category: '经营稳定性类', weight: 0.06, score: scoreCreditStatus(creditStatus) },
-    { factor: '历史贷款记录', category: '贷款历史类', weight: 0.03, score: scoreLoanHistory(loanHistory) },
-    {
-      factor: '历史逾期记录',
-      category: '贷款历史类',
-      weight: 0.04,
-      score: scoreLoanOverdueHistory(loanOverdueHistory),
-    },
+    { factor: '确权耕地总面积', category: '土地经营类', weight: WEIGHTS.landConfirmedArea, score: scoreLandConfirmedArea(landConfirmedArea) },
+    { factor: '土地流转合同年限', category: '土地经营类', weight: WEIGHTS.landTransferYears, score: scoreLandTransferYears(landTransferYears) },
+    { factor: '土地流转稳定性', category: '土地经营类', weight: WEIGHTS.landTransferStability, score: scoreLandTransferStability(landTransferStability) },
+    { factor: '黑土地保护性耕作面积', category: '土地经营类', weight: WEIGHTS.blackSoilProtection, score: scoreBlackSoilProtection(blackSoilProtection) },
+    { factor: '耕地地力保护补贴', category: '农业补贴类', weight: WEIGHTS.grainSubsidy, score: scoreGrainSubsidy(grainSubsidy) },
+    { factor: '大型农机购置补贴', category: '农业补贴类', weight: WEIGHTS.machinerySubsidy, score: scoreMachinerySubsidy(machinerySubsidy) },
+    { factor: '粮食规模种植专项补贴', category: '农业补贴类', weight: WEIGHTS.grainScaleSubsidy, score: scoreGrainScaleSubsidy(grainScaleSubsidy) },
+    { factor: '特色经济作物补贴', category: '农业补贴类', weight: WEIGHTS.specialtyCropSubsidy, score: scoreSpecialtyCropSubsidy(specialtyCropSubsidy) },
+    { factor: '农业保险连续投保年限', category: '农业保险类', weight: WEIGHTS.insuranceYears, score: scoreInsuranceYears(insuranceYears) },
+    { factor: '历史保险理赔频次', category: '农业保险类', weight: WEIGHTS.claimCount, score: scoreClaimCount(claimCount) },
+    { factor: '设施农业附加保险', category: '农业保险类', weight: WEIGHTS.facilityInsurance, score: scoreFacilityInsurance(facilityInsurance) },
+    { factor: '主体持续经营年限', category: '产销经营类', weight: WEIGHTS.yearsOperating, score: scoreYearsOperating(yearsOperating) },
+    { factor: '长期农产品收购订单', category: '产销经营类', weight: WEIGHTS.purchaseOrder, score: scorePurchaseOrder(purchaseOrder) },
+    { factor: '农产品年稳定营收', category: '产销经营类', weight: WEIGHTS.annualRevenue, score: scoreAnnualRevenue(annualRevenue) },
+    { factor: '历年涉农信贷履约记录', category: '产销经营类', weight: WEIGHTS.creditRecord, score: scoreCreditRecord(creditRecord) },
   ]
 
   // --- 加权汇总 → 0-1000 评分卡刻度 ---
   const rawTotal = indicators.reduce((sum, item) => sum + item.weight * item.score, 0)
   const score = clamp(Math.round(rawTotal * 10), 0, 1000)
 
-  // --- Logistic 违约概率映射（评分 550 为中心）---
-  const logitInput = -(score - 550) / 150
+  // --- Logistic 违约概率映射（评分中心 600，B=72.13）---
+  const logitInput = -(score - 600) / 72.13
   const probability = parseFloat(sigmoid(logitInput).toFixed(4))
 
   // --- 风险等级（业务阈值分级）---

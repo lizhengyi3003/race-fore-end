@@ -19,57 +19,46 @@ const businessTypeOptions = [
   { label: '混合经营', value: '混合' },
 ]
 
-const plantingOptions = [
-  { label: '主粮种植（水稻/玉米/大豆）', value: '主粮种植' },
-  { label: '经济作物', value: '经济作物' },
-  { label: '混合经营', value: '混合经营' },
-  { label: '设施农业', value: '设施农业' },
+const stabilityOptions = [
+  { label: '稳定（近3年地块无变动）', value: '稳定' },
+  { label: '小幅调整（1-2年有调整）', value: '小幅调整' },
+  { label: '频繁变更（年度更换地块）', value: '频繁变更' },
 ]
 
-const stabilityOptions = [
-  { label: '稳定', value: '稳定' },
-  { label: '基本稳定', value: '基本稳定' },
-  { label: '波动较大', value: '波动较大' },
-  { label: '大幅波动', value: '大幅波动' },
+const facilityOptions = [
+  { label: '完整投保附加险', value: '完整投保' },
+  { label: '仅基础种植险', value: '仅基础险' },
+  { label: '未投保', value: '未投保' },
+]
+
+const orderOptions = [
+  { label: '年度固定订单', value: '年度订单' },
+  { label: '零散散户收购', value: '零散收购' },
+  { label: '无稳定收购渠道', value: '无稳定渠道' },
 ]
 
 const creditOptions = [
-  { label: '无不良记录', value: '无不良记录' },
-  { label: '轻微逾期', value: '轻微逾期' },
-  { label: '多次逾期', value: '多次逾期' },
-  { label: '严重失信', value: '严重失信' },
-]
-
-const educationOptions = [
-  { label: '小学及以下', value: '小学及以下' },
-  { label: '初中', value: '初中' },
-  { label: '高中', value: '高中' },
-  { label: '大专及以上', value: '大专及以上' },
+  { label: '无逾期（全额还款）', value: '无逾期' },
+  { label: '存在逾期记录', value: '有逾期' },
 ]
 
 const rules: FormRules = {
   enterpriseName: [{ required: true, message: '请输入企业名称', trigger: 'blur' }],
   businessType: [{ required: true, message: '请选择经营类型', trigger: 'change' }],
-  // 户主特征类
-  age: [{ required: true, message: '请输入年龄', trigger: 'blur' }],
-  education: [{ required: true, message: '请选择受教育程度', trigger: 'change' }],
-  familyMembers: [{ required: true, message: '请输入家庭成员数量', trigger: 'blur' }],
   // 土地经营类
-  landConfirmedArea: [{ required: true, message: '请输入土地确权面积', trigger: 'blur' }],
-  landTransferYears: [{ required: true, message: '请输入土地流转年限', trigger: 'blur' }],
-  plantingStructure: [{ required: true, message: '请选择种植结构', trigger: 'change' }],
+  landConfirmedArea: [{ required: true, message: '请输入确权耕地总面积', trigger: 'blur' }],
+  landTransferYears: [{ required: true, message: '请输入土地流转合同年限', trigger: 'blur' }],
+  landTransferStability: [{ required: true, message: '请选择土地流转稳定性', trigger: 'change' }],
   // 农业补贴类
-  grainSubsidy: [{ required: true, message: '请输入粮食直补金额', trigger: 'blur' }],
+  grainSubsidy: [{ required: true, message: '请输入耕地地力保护补贴', trigger: 'blur' }],
   // 农业保险类
-  insuranceCoverage: [{ required: true, message: '请输入农业保险覆盖率', trigger: 'blur' }],
-  // 经营稳定性类
-  yearsOperating: [{ required: true, message: '请输入经营年限', trigger: 'blur' }],
-  annualRevenue: [{ required: true, message: '请输入年销售收入', trigger: 'blur' }],
-  revenueStability: [{ required: true, message: '请选择销售收入稳定性', trigger: 'change' }],
-  creditStatus: [{ required: true, message: '请选择征信状况', trigger: 'change' }],
-  // 贷款历史类
-  loanHistory: [{ required: true, message: '请输入历史贷款记录', trigger: 'blur' }],
-  loanOverdueHistory: [{ required: true, message: '请输入历史逾期记录', trigger: 'blur' }],
+  insuranceYears: [{ required: true, message: '请输入农业保险连续投保年限', trigger: 'blur' }],
+  facilityInsurance: [{ required: true, message: '请选择设施农业附加保险', trigger: 'change' }],
+  // 产销经营类
+  yearsOperating: [{ required: true, message: '请输入主体持续经营年限', trigger: 'blur' }],
+  annualRevenue: [{ required: true, message: '请输入农产品年稳定营收', trigger: 'blur' }],
+  purchaseOrder: [{ required: true, message: '请选择长期收购订单', trigger: 'change' }],
+  creditRecord: [{ required: true, message: '请选择信贷履约记录', trigger: 'change' }],
 }
 
 async function handleSubmit() {
@@ -97,11 +86,11 @@ function handleReset() {
   <div class="page-container">
     <div class="page-header">
       <h1>涉农企业数据录入</h1>
-      <p>六大类 21 项替代数据指标 · 信贷员 3 分钟完成录入 · 系统基于 Logistic 评分卡智能评估</p>
+      <p>四大维度 15 项替代数据指标 · 信贷员 3 分钟完成录入 · 系统基于 Logistic 评分卡智能评估</p>
     </div>
 
     <div class="info-card form-wrapper">
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="110px" label-position="right">
+      <el-form ref="formRef" :model="form" :rules="rules" label-width="150px" label-position="right">
         <!-- 基础信息 -->
         <el-divider content-position="left">
           <el-icon><OfficeBuilding /></el-icon>
@@ -131,58 +120,20 @@ function handleReset() {
         <el-row :gutter="24">
           <el-col :span="12">
             <el-form-item label="主营产品">
-              <el-input v-model="form.productType" placeholder="如：水稻、生猪、菌菇" maxlength="30" />
+              <el-input v-model="form.productType" placeholder="如：水稻、玉米、大豆" maxlength="30" />
             </el-form-item>
           </el-col>
         </el-row>
 
-        <!-- ========== 户主特征类 ========== -->
-        <el-divider content-position="left">
-          <el-icon><User /></el-icon>
-          <span style="margin-left: 6px">户主特征类（反映金融素养与家庭劳动力）</span>
-        </el-divider>
-
-        <el-row :gutter="24">
-          <el-col :span="8">
-            <el-form-item label="年龄" prop="age">
-              <div class="unit-input">
-                <el-input-number v-model="form.age" :min="18" :max="80" :precision="0" controls-position="right" />
-                <span class="unit-label">岁</span>
-              </div>
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="受教育程度" prop="education">
-              <el-select v-model="form.education" placeholder="请选择最高学历" style="width: 100%">
-                <el-option v-for="item in educationOptions" :key="item.value" :label="item.label" :value="item.value" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="家庭成员数" prop="familyMembers">
-              <div class="unit-input">
-                <el-input-number
-                  v-model="form.familyMembers"
-                  :min="1"
-                  :max="20"
-                  :precision="0"
-                  controls-position="right"
-                />
-                <span class="unit-label">人</span>
-              </div>
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <!-- ========== 第一类：土地经营类 ========== -->
+        <!-- ========== 维度一：土地经营类 ========== -->
         <el-divider content-position="left">
           <el-icon><Sunny /></el-icon>
-          <span style="margin-left: 6px">土地经营类（反映经营规模与稳定性）</span>
+          <span style="margin-left: 6px">土地经营类（权重 38%，核心资产维度）</span>
         </el-divider>
 
         <el-row :gutter="24">
           <el-col :span="8">
-            <el-form-item label="确权面积" prop="landConfirmedArea">
+            <el-form-item label="确权耕地总面积" prop="landConfirmedArea">
               <div class="unit-input">
                 <el-input-number v-model="form.landConfirmedArea" :min="0" :precision="1" controls-position="right" />
                 <span class="unit-label">亩</span>
@@ -190,13 +141,13 @@ function handleReset() {
             </el-form-item>
           </el-col>
           <el-col :span="8">
-            <el-form-item label="流转年限" prop="landTransferYears">
+            <el-form-item label="土地流转合同年限" prop="landTransferYears">
               <div class="unit-input">
                 <el-input-number
                   v-model="form.landTransferYears"
                   :min="0"
                   :max="50"
-                  :precision="1"
+                  :precision="0"
                   controls-position="right"
                 />
                 <span class="unit-label">年</span>
@@ -204,16 +155,15 @@ function handleReset() {
             </el-form-item>
           </el-col>
           <el-col :span="8">
-            <el-form-item label="规模利用率">
+            <el-form-item label="黑土地保护耕作">
               <div class="unit-input">
                 <el-input-number
-                  v-model="form.landUtilization"
+                  v-model="form.blackSoilProtection"
                   :min="0"
-                  :max="100"
                   :precision="1"
                   controls-position="right"
                 />
-                <span class="unit-label">%</span>
+                <span class="unit-label">亩</span>
               </div>
             </el-form-item>
           </el-col>
@@ -221,118 +171,78 @@ function handleReset() {
 
         <el-row :gutter="24">
           <el-col :span="12">
-            <el-form-item label="种植结构" prop="plantingStructure">
-              <el-select v-model="form.plantingStructure" placeholder="请选择种植结构" style="width: 100%">
-                <el-option v-for="item in plantingOptions" :key="item.value" :label="item.label" :value="item.value" />
+            <el-form-item label="土地流转稳定性" prop="landTransferStability">
+              <el-select v-model="form.landTransferStability" placeholder="近 3 年地块变更情况" style="width: 100%">
+                <el-option v-for="item in stabilityOptions" :key="item.value" :label="item.label" :value="item.value" />
               </el-select>
             </el-form-item>
           </el-col>
         </el-row>
 
-        <!-- ========== 第二类：农业补贴类 ========== -->
+        <!-- ========== 维度二：农业补贴类 ========== -->
         <el-divider content-position="left">
           <el-icon><Money /></el-icon>
-          <span style="margin-left: 6px">农业补贴类（反映政策支持力度与收入底线）</span>
+          <span style="margin-left: 6px">农业补贴类（权重 27%，稳定现金流维度）</span>
         </el-divider>
 
         <el-row :gutter="24">
-          <el-col :span="8">
-            <el-form-item label="粮食直补" prop="grainSubsidy">
+          <el-col :span="12">
+            <el-form-item label="耕地地力保护补贴" prop="grainSubsidy">
               <div class="unit-input">
                 <el-input-number v-model="form.grainSubsidy" :min="0" :precision="0" controls-position="right" />
                 <span class="unit-label">元</span>
               </div>
             </el-form-item>
           </el-col>
-          <el-col :span="8">
-            <el-form-item label="农机购置补贴">
+          <el-col :span="12">
+            <el-form-item label="大型农机购置补贴">
               <div class="unit-input">
                 <el-input-number v-model="form.machinerySubsidy" :min="0" :precision="0" controls-position="right" />
                 <span class="unit-label">元</span>
               </div>
             </el-form-item>
           </el-col>
-          <el-col :span="8">
-            <el-form-item label="其他涉农补贴">
+        </el-row>
+
+        <el-row :gutter="24">
+          <el-col :span="12">
+            <el-form-item label="粮食规模种植补贴">
               <div class="unit-input">
-                <el-input-number v-model="form.otherSubsidy" :min="0" :precision="0" controls-position="right" />
+                <el-input-number v-model="form.grainScaleSubsidy" :min="0" :precision="0" controls-position="right" />
+                <span class="unit-label">元</span>
+              </div>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="特色经济作物补贴">
+              <div class="unit-input">
+                <el-input-number
+                  v-model="form.specialtyCropSubsidy"
+                  :min="0"
+                  :precision="0"
+                  controls-position="right"
+                />
                 <span class="unit-label">元</span>
               </div>
             </el-form-item>
           </el-col>
         </el-row>
 
-        <!-- ========== 第三类：农业保险类 ========== -->
+        <!-- ========== 维度三：农业保险类 ========== -->
         <el-divider content-position="left">
           <el-icon><Umbrella /></el-icon>
-          <span style="margin-left: 6px">农业保险类（反映风险管理意识与抗风险能力）</span>
-        </el-divider>
-
-        <el-row :gutter="24">
-          <el-col :span="12">
-            <el-form-item label="保险覆盖率" prop="insuranceCoverage">
-              <div class="unit-input">
-                <el-input-number
-                  v-model="form.insuranceCoverage"
-                  :min="0"
-                  :max="100"
-                  :precision="1"
-                  controls-position="right"
-                />
-                <span class="unit-label">%</span>
-              </div>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="理赔次数">
-              <div class="unit-input">
-                <el-input-number v-model="form.claimCount" :min="0" :max="50" controls-position="right" />
-                <span class="unit-label">次</span>
-              </div>
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-row :gutter="24">
-          <el-col :span="12">
-            <el-form-item label="理赔金额">
-              <div class="unit-input">
-                <el-input-number v-model="form.claimAmount" :min="0" :precision="0" controls-position="right" />
-                <span class="unit-label">元</span>
-              </div>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="理赔占比">
-              <div class="unit-input">
-                <el-input-number
-                  v-model="form.claimRatio"
-                  :min="0"
-                  :max="100"
-                  :precision="1"
-                  controls-position="right"
-                />
-                <span class="unit-label">%</span>
-              </div>
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <!-- ========== 第四类：经营稳定性类 ========== -->
-        <el-divider content-position="left">
-          <el-icon><DataLine /></el-icon>
-          <span style="margin-left: 6px">经营稳定性类（反映持续经营能力）</span>
+          <span style="margin-left: 6px">农业保险类（权重 20%，风险抵御维度）</span>
         </el-divider>
 
         <el-row :gutter="24">
           <el-col :span="8">
-            <el-form-item label="经营年限" prop="yearsOperating">
+            <el-form-item label="连续投保年限" prop="insuranceYears">
               <div class="unit-input">
                 <el-input-number
-                  v-model="form.yearsOperating"
+                  v-model="form.insuranceYears"
                   :min="0"
-                  :max="50"
-                  :precision="1"
+                  :max="30"
+                  :precision="0"
                   controls-position="right"
                 />
                 <span class="unit-label">年</span>
@@ -340,79 +250,72 @@ function handleReset() {
             </el-form-item>
           </el-col>
           <el-col :span="8">
-            <el-form-item label="经营集中度">
+            <el-form-item label="历史理赔频次">
               <div class="unit-input">
                 <el-input-number
-                  v-model="form.businessConcentration"
+                  v-model="form.claimCount"
                   :min="0"
-                  :max="100"
-                  :precision="1"
+                  :max="50"
+                  :precision="0"
                   controls-position="right"
                 />
-                <span class="unit-label">%</span>
+                <span class="unit-label">次</span>
               </div>
             </el-form-item>
           </el-col>
           <el-col :span="8">
-            <el-form-item label="年销售收入" prop="annualRevenue">
+            <el-form-item label="设施农业附加险" prop="facilityInsurance">
+              <el-select v-model="form.facilityInsurance" placeholder="请选择" style="width: 100%">
+                <el-option v-for="item in facilityOptions" :key="item.value" :label="item.label" :value="item.value" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <!-- ========== 维度四：产销经营类 ========== -->
+        <el-divider content-position="left">
+          <el-icon><DataLine /></el-icon>
+          <span style="margin-left: 6px">产销经营类（权重 15%，长期经营还款意愿维度）</span>
+        </el-divider>
+
+        <el-row :gutter="24">
+          <el-col :span="8">
+            <el-form-item label="持续经营年限" prop="yearsOperating">
+              <div class="unit-input">
+                <el-input-number
+                  v-model="form.yearsOperating"
+                  :min="0"
+                  :max="50"
+                  :precision="0"
+                  controls-position="right"
+                />
+                <span class="unit-label">年</span>
+              </div>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="年稳定营收" prop="annualRevenue">
               <div class="unit-input">
                 <el-input-number v-model="form.annualRevenue" :min="0" :precision="1" controls-position="right" />
                 <span class="unit-label">万元</span>
               </div>
             </el-form-item>
           </el-col>
+          <el-col :span="8">
+            <el-form-item label="长期收购订单" prop="purchaseOrder">
+              <el-select v-model="form.purchaseOrder" placeholder="请选择" style="width: 100%">
+                <el-option v-for="item in orderOptions" :key="item.value" :label="item.label" :value="item.value" />
+              </el-select>
+            </el-form-item>
+          </el-col>
         </el-row>
 
         <el-row :gutter="24">
           <el-col :span="12">
-            <el-form-item label="销售收入稳定性" prop="revenueStability">
-              <el-select v-model="form.revenueStability" placeholder="请选择近三年收入波动" style="width: 100%">
-                <el-option v-for="item in stabilityOptions" :key="item.value" :label="item.label" :value="item.value" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="经营者征信状况" prop="creditStatus">
-              <el-select v-model="form.creditStatus" placeholder="请选择征信状况" style="width: 100%">
+            <el-form-item label="历年信贷履约" prop="creditRecord">
+              <el-select v-model="form.creditRecord" placeholder="请选择" style="width: 100%">
                 <el-option v-for="item in creditOptions" :key="item.value" :label="item.label" :value="item.value" />
               </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <!-- ========== 第六类：贷款历史类 ========== -->
-        <el-divider content-position="left">
-          <el-icon><Stamp /></el-icon>
-          <span style="margin-left: 6px">贷款历史类（反映信用记录与履约能力）</span>
-        </el-divider>
-
-        <el-row :gutter="24">
-          <el-col :span="12">
-            <el-form-item label="历史贷款记录" prop="loanHistory">
-              <div class="unit-input">
-                <el-input-number
-                  v-model="form.loanHistory"
-                  :min="0"
-                  :max="50"
-                  :precision="0"
-                  controls-position="right"
-                />
-                <span class="unit-label">次</span>
-              </div>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="历史逾期记录" prop="loanOverdueHistory">
-              <div class="unit-input">
-                <el-input-number
-                  v-model="form.loanOverdueHistory"
-                  :min="0"
-                  :max="50"
-                  :precision="0"
-                  controls-position="right"
-                />
-                <span class="unit-label">次</span>
-              </div>
             </el-form-item>
           </el-col>
         </el-row>

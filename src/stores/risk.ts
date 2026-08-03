@@ -9,33 +9,25 @@ export const useRiskStore = defineStore('risk', () => {
     enterpriseName: '',
     businessType: '',
     productType: '',
-    // 户主特征类
-    age: undefined,
-    education: '',
-    familyMembers: undefined,
     // 土地经营类
     landConfirmedArea: undefined,
     landTransferYears: undefined,
-    plantingStructure: '',
-    landUtilization: undefined,
+    landTransferStability: '',
+    blackSoilProtection: undefined,
     // 农业补贴类
     grainSubsidy: undefined,
     machinerySubsidy: undefined,
-    otherSubsidy: undefined,
+    grainScaleSubsidy: undefined,
+    specialtyCropSubsidy: undefined,
     // 农业保险类
-    insuranceCoverage: undefined,
+    insuranceYears: undefined,
     claimCount: undefined,
-    claimAmount: undefined,
-    claimRatio: undefined,
-    // 经营稳定性类
+    facilityInsurance: '',
+    // 产销经营类
     yearsOperating: undefined,
-    businessConcentration: undefined,
+    purchaseOrder: '',
     annualRevenue: undefined,
-    revenueStability: '',
-    creditStatus: '',
-    // 贷款历史类
-    loanHistory: undefined,
-    loanOverdueHistory: undefined,
+    creditRecord: '',
   })
 
   const riskResult = ref<RiskResult | null>(null)
@@ -70,33 +62,25 @@ export const useRiskStore = defineStore('risk', () => {
       enterpriseName: '',
       businessType: '',
       productType: '',
-      // 户主特征类
-      age: undefined,
-      education: '',
-      familyMembers: undefined,
       // 土地经营类
       landConfirmedArea: undefined,
       landTransferYears: undefined,
-      plantingStructure: '',
-      landUtilization: undefined,
+      landTransferStability: '',
+      blackSoilProtection: undefined,
       // 农业补贴类
       grainSubsidy: undefined,
       machinerySubsidy: undefined,
-      otherSubsidy: undefined,
+      grainScaleSubsidy: undefined,
+      specialtyCropSubsidy: undefined,
       // 农业保险类
-      insuranceCoverage: undefined,
+      insuranceYears: undefined,
       claimCount: undefined,
-      claimAmount: undefined,
-      claimRatio: undefined,
-      // 经营稳定性类
+      facilityInsurance: '',
+      // 产销经营类
       yearsOperating: undefined,
-      businessConcentration: undefined,
+      purchaseOrder: '',
       annualRevenue: undefined,
-      revenueStability: '',
-      creditStatus: '',
-      // 贷款历史类
-      loanHistory: undefined,
-      loanOverdueHistory: undefined,
+      creditRecord: '',
     }
     riskResult.value = null
   }
@@ -104,7 +88,6 @@ export const useRiskStore = defineStore('risk', () => {
   async function assessRisk() {
     isCalculating.value = true
     try {
-      // 调用后端真实评分卡（多元统计模型）
       riskResult.value = await submitRiskAssessment(formData.value)
     } catch {
       // 请求失败时保留原结果
