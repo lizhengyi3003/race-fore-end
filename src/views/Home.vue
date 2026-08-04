@@ -1,4 +1,14 @@
 <script setup lang="ts">
+import { ref, onMounted, onBeforeUnmount } from 'vue'
+
+// 移动端：技术路线步骤改为纵向排列
+const isMobile = ref(window.innerWidth <= 768)
+function updateIsMobile() {
+  isMobile.value = window.innerWidth <= 768
+}
+onMounted(() => window.addEventListener('resize', updateIsMobile))
+onBeforeUnmount(() => window.removeEventListener('resize', updateIsMobile))
+
 // 行业痛点数据
 const painPoints = [
   {
@@ -100,7 +110,7 @@ const advantages = [
         <h2>技术路线（评分卡流程）</h2>
       </div>
       <div class="tech-flow info-card">
-        <el-steps :active="5" align-center>
+        <el-steps :active="5" :direction="isMobile ? 'vertical' : 'horizontal'" align-center>
           <el-step title="数据采集" description="四大维度15项替代数据指标" />
           <el-step title="特征筛选" description="IV值评估 / VIF共线性诊断" />
           <el-step title="WOE编码" description="连续变量分箱与证据权重转换" />
@@ -150,6 +160,11 @@ export default {
 
 .section {
   margin-bottom: 36px;
+
+  // 移动端卡片堆叠时保留纵向间距
+  .el-row .el-col {
+    margin-bottom: 16px;
+  }
 
   .section-header {
     display: flex;
@@ -216,5 +231,9 @@ export default {
 
 .tech-flow {
   padding: 40px 24px;
+
+  @media (max-width: 768px) {
+    padding: 20px 12px;
+  }
 }
 </style>

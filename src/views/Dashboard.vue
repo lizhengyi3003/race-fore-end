@@ -198,7 +198,7 @@ onBeforeUnmount(() => {
     </el-row>
 
     <!-- 图表区 -->
-    <el-row :gutter="16">
+    <el-row :gutter="16" class="chart-row">
       <el-col :xs="24" :sm="24" :md="12">
         <div class="info-card chart-card">
           <div ref="pieChartRef" class="chart-body" />
@@ -211,7 +211,7 @@ onBeforeUnmount(() => {
       </el-col>
     </el-row>
 
-    <el-row :gutter="16" style="margin-top: 16px">
+    <el-row :gutter="16" class="chart-row" style="margin-top: 16px">
       <el-col :xs="24">
         <div class="info-card chart-card">
           <div ref="trendChartRef" class="chart-body" />
@@ -225,6 +225,12 @@ onBeforeUnmount(() => {
 .stat-row {
   margin-bottom: 20px;
 
+  .el-col {
+    margin-bottom: 16px;
+  }
+}
+
+.chart-row {
   .el-col {
     margin-bottom: 16px;
   }

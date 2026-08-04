@@ -289,21 +289,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateIsMobile))
   background: #fff;
 }
 
-// 移动端抽屉
-.mobile-drawer {
-  :deep(.el-drawer__body) {
-    padding: 0;
-    background: #1a1a2e;
-  }
-
-  .mobile-drawer-header {
-    padding: 20px 16px;
-  }
-
-  :deep(.aside-menu) {
-    border-right: none;
-  }
-}
+// 移动端抽屉样式见文件底部全局 <style>（el-drawer teleport 到 body，scoped 不生效）
 
 // 移动端头部紧凑化
 @media (max-width: 768px) {
@@ -331,4 +317,32 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateIsMobile))
     font-size: 11px;
     padding: 0 12px;
   }
-}</style>
+}
+</style>
+
+<!-- el-drawer 会 teleport 到 body，抽屉内部样式必须用全局（非 scoped）样式 -->
+<style lang="scss">
+.mobile-drawer .el-drawer__body {
+  padding: 0;
+  background: #1a1a2e;
+}
+
+.mobile-drawer .aside-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+
+  .logo-text {
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
+  }
+}
+
+.mobile-drawer .aside-menu {
+  border-right: none;
+}
+</style>

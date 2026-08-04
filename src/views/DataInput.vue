@@ -1,11 +1,19 @@
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import type { FormInstance, FormRules } from 'element-plus'
 import { useRiskStore } from '@/stores/risk'
 
 const router = useRouter()
 const riskStore = useRiskStore()
+
+// 移动端表单改为「标签在上、输入在下」的左对齐布局
+const isMobile = ref(window.innerWidth <= 768)
+function updateIsMobile() {
+  isMobile.value = window.innerWidth <= 768
+}
+onMounted(() => window.addEventListener('resize', updateIsMobile))
+onBeforeUnmount(() => window.removeEventListener('resize', updateIsMobile))
 
 const formRef = ref<FormInstance>()
 const submitting = ref(false)
@@ -90,7 +98,13 @@ function handleReset() {
     </div>
 
     <div class="info-card form-wrapper">
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="150px" label-position="right">
+      <el-form
+        ref="formRef"
+        :model="form"
+        :rules="rules"
+        :label-position="isMobile ? 'top' : 'right'"
+        :label-width="isMobile ? 'auto' : '150px'"
+      >
         <!-- 基础信息 -->
         <el-divider content-position="left">
           <el-icon><OfficeBuilding /></el-icon>
