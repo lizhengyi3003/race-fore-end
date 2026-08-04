@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRiskStore } from '@/stores/risk'
 import * as echarts from 'echarts'
@@ -10,12 +10,24 @@ const router = useRouter()
 const riskStore = useRiskStore()
 
 const barChartRef = ref<HTMLElement>()
+let barChart: echarts.ECharts | null = null
+
+function handleResize() {
+  if (barChart) barChart.resize()
+}
 
 // 有数据时初始化图表
 onMounted(() => {
   if (riskStore.hasResult) {
     initBarChart()
   }
+  window.addEventListener('resize', handleResize)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleResize)
+  barChart?.dispose()
+  barChart = null
 })
 
 const result = computed(() => riskStore.riskResult!)
@@ -33,6 +45,7 @@ function handlePrint() {
 function initBarChart() {
   if (!barChartRef.value || !result.value) return
   const chart = echarts.init(barChartRef.value)
+  barChart = chart
 
   const contribs = result.value.contributions.sort((a, b) => b.score - a.score)
 
@@ -45,7 +58,8 @@ function initBarChart() {
         return `${p.name}<br/>得分：${p.value.toFixed(1)} 分`
       },
     },
-    grid: { top: 20, right: 30, bottom: 40, left: 80 },
+    // 右侧留白加大，避免「100分」轴标签与柱顶数值被裁切
+    grid: { top: 20, right: 64, bottom: 40, left: 80 },
     xAxis: {
       type: 'value',
       max: 100,

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import * as echarts from 'echarts'
-import { onMounted, ref, watch } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const props = defineProps<{
   score: number
@@ -92,6 +92,10 @@ function buildOption() {
 
 let chart: echarts.ECharts | null = null
 
+function handleResize() {
+  if (chart) chart.resize()
+}
+
 function initChart() {
   if (!gaugeRef.value) return
   chart = echarts.init(gaugeRef.value)
@@ -110,16 +114,24 @@ watch(
 
 onMounted(() => {
   initChart()
+  window.addEventListener('resize', handleResize)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleResize)
+  chart?.dispose()
+  chart = null
 })
 </script>
 
 <template>
-  <div
-    ref="gaugeRef"
-    :style="{
-      width: size ? size + 'px' : '100%',
-      height: size ? size + 'px' : '240px',
-      margin: '0 auto',
-    }"
-  />
+  <div ref="gaugeRef" class="gauge-container" :style="{ maxWidth: (size || 320) + 'px' }" />
 </template>
+
+<style scoped lang="scss">
+.gauge-container {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  margin: 0 auto;
+}
+</style>
