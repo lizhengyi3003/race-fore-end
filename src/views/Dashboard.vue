@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import * as echarts from 'echarts'
 import StatCard from '@/components/StatCard.vue'
 import http from '@/api/index'
@@ -20,6 +20,13 @@ const trendData = ref<{ date: string; count: number; avgScore: number }[]>([])
 const pieChartRef = ref<HTMLElement>()
 const barChartRef = ref<HTMLElement>()
 const trendChartRef = ref<HTMLElement>()
+
+// 图表实例注册表，用于窗口尺寸变化时统一 resize
+const chartInstances: echarts.ECharts[] = []
+
+function handleResize() {
+  chartInstances.forEach((c) => c.resize())
+}
 
 async function loadDashboard() {
   try {
@@ -44,6 +51,7 @@ async function loadDashboard() {
 function initPieChart() {
   if (!pieChartRef.value || !industryData.value.length) return
   const chart = echarts.init(pieChartRef.value)
+  chartInstances.push(chart)
   chart.setOption({
     title: { text: '行业风险分布', left: 'center', textStyle: { fontSize: 15 } },
     tooltip: { trigger: 'item', formatter: '{b}: {c} 户 ({d}%)' },
@@ -65,6 +73,7 @@ function initPieChart() {
 function initBarChart() {
   if (!barChartRef.value || !scoreDistData.value.length) return
   const chart = echarts.init(barChartRef.value)
+  chartInstances.push(chart)
   chart.setOption({
     title: { text: '信用评分分布', left: 'center', textStyle: { fontSize: 15 } },
     tooltip: { trigger: 'axis' },
@@ -102,18 +111,33 @@ function initBarChart() {
 function initTrendChart() {
   if (!trendChartRef.value || !trendData.value.length) return
   const chart = echarts.init(trendChartRef.value)
+  chartInstances.push(chart)
   chart.setOption({
-    title: { text: '近30天评估趋势', left: 'center', textStyle: { fontSize: 15 } },
+    title: { text: '近30天评估趋势', left: 'center', top: 8, textStyle: { fontSize: 15 } },
     tooltip: { trigger: 'axis' },
-    legend: { top: 28 },
+    // 图例与标题拉开间距，避免与两侧 Y 轴名称重叠
+    legend: { top: 34, itemWidth: 14, itemHeight: 10, textStyle: { fontSize: 11 } },
     xAxis: {
       type: 'category',
       data: trendData.value.map((d) => d.date.slice(5)),
       axisLabel: { fontSize: 10 },
     },
     yAxis: [
-      { type: 'value', name: '评估次数', minInterval: 1 },
-      { type: 'value', name: '平均评分', min: 0, max: 1000 },
+      {
+        type: 'value',
+        name: '评估次数',
+        minInterval: 1,
+        nameGap: 18,
+        nameTextStyle: { fontSize: 11 },
+      },
+      {
+        type: 'value',
+        name: '平均评分',
+        min: 0,
+        max: 1000,
+        nameGap: 18,
+        nameTextStyle: { fontSize: 11 },
+      },
     ],
     series: [
       {
@@ -133,11 +157,21 @@ function initTrendChart() {
         itemStyle: { color: '#e6a23c' },
       },
     ],
-    grid: { top: 60, right: 30, bottom: 30, left: 60 },
+    // 加大顶部留白：为标题、图例与两侧 Y 轴名称预留独立空间
+    grid: { top: 92, right: 44, bottom: 34, left: 66 },
   })
 }
 
-onMounted(loadDashboard)
+onMounted(() => {
+  window.addEventListener('resize', handleResize)
+  loadDashboard()
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleResize)
+  chartInstances.forEach((c) => c.dispose())
+  chartInstances.length = 0
+})
 </script>
 
 <template>
@@ -149,38 +183,38 @@ onMounted(loadDashboard)
 
     <!-- 统计概览卡片 -->
     <el-row :gutter="16" class="stat-row">
-      <el-col :span="6">
+      <el-col :xs="12" :sm="12" :md="6">
         <StatCard title="评估总数" :value="statsData.totalAssess" unit="户" icon="DataLine" color="#2c6e49" />
       </el-col>
-      <el-col :span="6">
+      <el-col :xs="12" :sm="12" :md="6">
         <StatCard title="平均信用分" :value="statsData.avgScore" unit="分" icon="TrendCharts" color="#4c956c" />
       </el-col>
-      <el-col :span="6">
+      <el-col :xs="12" :sm="12" :md="6">
         <StatCard title="高风险占比" :value="statsData.highRiskRate" unit="%" icon="WarningFilled" color="#f56c6c" />
       </el-col>
-      <el-col :span="6">
+      <el-col :xs="12" :sm="12" :md="6">
         <StatCard title="授信通过率" :value="statsData.passRate" unit="%" icon="CircleCheckFilled" color="#67c23a" />
       </el-col>
     </el-row>
 
     <!-- 图表区 -->
     <el-row :gutter="16">
-      <el-col :span="12">
+      <el-col :xs="24" :sm="24" :md="12">
         <div class="info-card chart-card">
-          <div ref="pieChartRef" style="width: 100%; height: 380px" />
+          <div ref="pieChartRef" class="chart-body" />
         </div>
       </el-col>
-      <el-col :span="12">
+      <el-col :xs="24" :sm="24" :md="12">
         <div class="info-card chart-card">
-          <div ref="barChartRef" style="width: 100%; height: 380px" />
+          <div ref="barChartRef" class="chart-body" />
         </div>
       </el-col>
     </el-row>
 
     <el-row :gutter="16" style="margin-top: 16px">
-      <el-col :span="24">
+      <el-col :xs="24">
         <div class="info-card chart-card">
-          <div ref="trendChartRef" style="width: 100%; height: 380px" />
+          <div ref="trendChartRef" class="chart-body" />
         </div>
       </el-col>
     </el-row>
@@ -190,9 +224,26 @@ onMounted(loadDashboard)
 <style scoped lang="scss">
 .stat-row {
   margin-bottom: 20px;
+
+  .el-col {
+    margin-bottom: 16px;
+  }
 }
 
 .chart-card {
   padding: 20px;
+
+  .chart-body {
+    width: 100%;
+    height: 380px;
+  }
+
+  @media (max-width: 768px) {
+    padding: 12px;
+
+    .chart-body {
+      height: 300px;
+    }
+  }
 }
 </style>

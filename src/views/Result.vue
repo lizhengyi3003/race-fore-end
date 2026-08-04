@@ -101,7 +101,7 @@ function goBack() {
     <!-- 核心指标卡片 -->
     <el-row :gutter="20" class="result-cards">
       <!-- 信用评分仪表盘 -->
-      <el-col :span="8">
+      <el-col :xs="24" :md="8">
         <div class="info-card gauge-card">
           <h3 class="card-title">信用评分（0-1000）</h3>
           <ScoreGauge :score="result.score" :size="320" :max="1000" />
@@ -109,7 +109,7 @@ function goBack() {
       </el-col>
 
       <!-- 风险等级 & 违约概率 -->
-      <el-col :span="8">
+      <el-col :xs="24" :md="8">
         <div class="info-card risk-card">
           <h3 class="card-title">风险等级</h3>
           <div class="risk-level-display">
@@ -143,7 +143,7 @@ function goBack() {
       </el-col>
 
       <!-- 授信建议 -->
-      <el-col :span="8">
+      <el-col :xs="24" :md="8">
         <div class="info-card advice-card">
           <h3 class="card-title">授信建议</h3>
           <div class="advice-item">
@@ -167,7 +167,7 @@ function goBack() {
         前三项扣分原因（人工复核提示）
       </h3>
       <el-row :gutter="16">
-        <el-col v-for="(ded, idx) in result.deductions" :key="ded.factor" :span="8">
+        <el-col v-for="(ded, idx) in result.deductions" :key="ded.factor" :xs="24" :sm="12" :md="8">
           <div class="deduction-item">
             <div class="deduction-rank">NO.{{ idx + 1 }}</div>
             <div class="deduction-body">

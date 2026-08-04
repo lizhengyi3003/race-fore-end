@@ -139,7 +139,7 @@ const conventions = [
         <h2>指导教师</h2>
       </div>
       <el-row :gutter="20">
-        <el-col v-for="advisor in advisors" :key="advisor.name" :span="8">
+        <el-col v-for="advisor in advisors" :key="advisor.name" :xs="24" :sm="12" :md="8">
           <div class="advisor-card info-card">
             <el-avatar :size="72" icon="UserFilled" />
             <h3>{{ advisor.name }}</h3>

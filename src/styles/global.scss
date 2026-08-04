@@ -48,6 +48,10 @@ body,
   padding: 24px;
   max-width: 1400px;
   margin: 0 auto;
+
+  @media (max-width: 768px) {
+    padding: 12px;
+  }
 }
 
 .page-header {
@@ -63,6 +67,19 @@ body,
   p {
     font-size: 14px;
     color: #909399;
+  }
+
+  @media (max-width: 768px) {
+    margin-bottom: 16px;
+
+    h1 {
+      font-size: 20px;
+    }
+
+    p {
+      font-size: 12px;
+      line-height: 1.6;
+    }
   }
 }
 

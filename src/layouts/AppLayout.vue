@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
@@ -9,6 +9,24 @@ const route = useRoute()
 const authStore = useAuthStore()
 
 const isCollapsed = ref(false)
+// 移动端状态（< 768px 视为移动端）
+const isMobile = ref(window.innerWidth <= 768)
+const mobileMenuOpen = ref(false)
+
+const menus = [
+  { index: '/home', icon: 'HomeFilled', label: '项目介绍' },
+  { index: '/input', icon: 'Edit', label: '数据录入' },
+  { index: '/result', icon: 'DataAnalysis', label: '评估结果' },
+  { index: '/dashboard', icon: 'PieChart', label: '数据看板' },
+  { index: '/team', icon: 'UserFilled', label: '团队介绍' },
+]
+
+function updateIsMobile() {
+  isMobile.value = window.innerWidth <= 768
+  if (!isMobile.value) {
+    mobileMenuOpen.value = false
+  }
+}
 
 const activeMenu = computed(() => {
   return route.path
@@ -21,6 +39,9 @@ function toggleCollapse() {
 }
 
 function navigateTo(path: string) {
+  if (isMobile.value) {
+    mobileMenuOpen.value = false
+  }
   router.push(path)
 }
 
@@ -37,12 +58,15 @@ async function handleLogout() {
   authStore.logout()
   router.replace('/login')
 }
+
+onMounted(() => window.addEventListener('resize', updateIsMobile))
+onBeforeUnmount(() => window.removeEventListener('resize', updateIsMobile))
 </script>
 
 <template>
   <el-container class="app-layout">
-    <!-- 侧边栏 -->
-    <el-aside :width="isCollapsed ? '64px' : '220px'" class="app-aside">
+    <!-- 侧边栏（桌面端） -->
+    <el-aside v-if="!isMobile" :width="isCollapsed ? '64px' : '220px'" class="app-aside">
       <div class="aside-header">
         <el-icon :size="28" color="#fff" class="logo-icon">
           <TrendCharts />
@@ -60,42 +84,60 @@ async function handleLogout() {
         class="aside-menu"
         @select="navigateTo"
       >
-        <el-menu-item index="/home">
-          <el-icon><HomeFilled /></el-icon>
-          <span>项目介绍</span>
-        </el-menu-item>
-        <el-menu-item index="/input">
-          <el-icon><Edit /></el-icon>
-          <span>数据录入</span>
-        </el-menu-item>
-        <el-menu-item index="/result">
-          <el-icon><DataAnalysis /></el-icon>
-          <span>评估结果</span>
-        </el-menu-item>
-        <el-menu-item index="/dashboard">
-          <el-icon><PieChart /></el-icon>
-          <span>数据看板</span>
-        </el-menu-item>
-        <el-menu-item index="/team">
-          <el-icon><UserFilled /></el-icon>
-          <span>团队介绍</span>
+        <el-menu-item v-for="m in menus" :key="m.index" :index="m.index">
+          <el-icon><component :is="m.icon" /></el-icon>
+          <span>{{ m.label }}</span>
         </el-menu-item>
       </el-menu>
     </el-aside>
+
+    <!-- 移动端抽屉菜单 -->
+    <el-drawer
+      v-model="mobileMenuOpen"
+      direction="ltr"
+      size="220px"
+      :with-header="false"
+      :modal-class="'mobile-drawer-modal'"
+      class="mobile-drawer"
+    >
+      <div class="aside-header mobile-drawer-header">
+        <el-icon :size="28" color="#fff" class="logo-icon">
+          <TrendCharts />
+        </el-icon>
+        <span class="logo-text">涉农风控系统</span>
+      </div>
+      <el-menu
+        :default-active="activeMenu"
+        :router="false"
+        background-color="#1a1a2e"
+        text-color="#bfcbd9"
+        active-text-color="#4c956c"
+        class="aside-menu"
+        @select="navigateTo"
+      >
+        <el-menu-item v-for="m in menus" :key="m.index" :index="m.index">
+          <el-icon><component :is="m.icon" /></el-icon>
+          <span>{{ m.label }}</span>
+        </el-menu-item>
+      </el-menu>
+    </el-drawer>
 
     <!-- 主体区域 -->
     <el-container>
       <!-- 顶部栏 -->
       <el-header class="app-header">
         <div class="header-left">
-          <el-icon class="collapse-btn" :size="22" @click="toggleCollapse">
+          <el-icon v-if="isMobile" class="collapse-btn" :size="22" @click="mobileMenuOpen = true">
+            <Menu />
+          </el-icon>
+          <el-icon v-else class="collapse-btn" :size="22" @click="toggleCollapse">
             <Fold v-if="!isCollapsed" />
             <Expand v-else />
           </el-icon>
-          <span class="header-title">基于多元统计模型的涉农小微企业信贷风险智能评估系统</span>
+          <span class="header-title">{{ isMobile ? '涉农风控系统' : '基于多元统计模型的涉农小微企业信贷风险智能评估系统' }}</span>
         </div>
         <div class="header-right">
-          <el-tag type="success" effect="dark" round>Demo v1.0</el-tag>
+          <el-tag v-if="!isMobile" type="success" effect="dark" round>Demo v1.0</el-tag>
           <el-dropdown trigger="click" @command="(cmd: string) => cmd === 'logout' && handleLogout()">
             <div class="user-info">
               <el-icon :size="18"><UserFilled /></el-icon>
@@ -246,4 +288,47 @@ async function handleLogout() {
   border-top: 1px solid #e8e8e8;
   background: #fff;
 }
-</style>
+
+// 移动端抽屉
+.mobile-drawer {
+  :deep(.el-drawer__body) {
+    padding: 0;
+    background: #1a1a2e;
+  }
+
+  .mobile-drawer-header {
+    padding: 20px 16px;
+  }
+
+  :deep(.aside-menu) {
+    border-right: none;
+  }
+}
+
+// 移动端头部紧凑化
+@media (max-width: 768px) {
+  .app-header {
+    padding: 0 12px;
+
+    .header-title {
+      font-size: 13px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 50vw;
+    }
+
+    .header-right {
+      gap: 8px;
+
+      .user-name {
+        max-width: 72px;
+      }
+    }
+  }
+
+  .app-footer {
+    font-size: 11px;
+    padding: 0 12px;
+  }
+}</style>

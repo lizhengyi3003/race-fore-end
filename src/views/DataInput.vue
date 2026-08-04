@@ -98,12 +98,12 @@ function handleReset() {
         </el-divider>
 
         <el-row :gutter="24">
-          <el-col :span="12">
+          <el-col :xs="24" :md="12">
             <el-form-item label="企业名称" prop="enterpriseName">
               <el-input v-model="form.enterpriseName" placeholder="请输入企业名称" maxlength="50" show-word-limit />
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col :xs="24" :md="12">
             <el-form-item label="经营类型" prop="businessType">
               <el-select v-model="form.businessType" placeholder="请选择经营类型" style="width: 100%">
                 <el-option
@@ -118,7 +118,7 @@ function handleReset() {
         </el-row>
 
         <el-row :gutter="24">
-          <el-col :span="12">
+          <el-col :xs="24" :md="12">
             <el-form-item label="主营产品">
               <el-input v-model="form.productType" placeholder="如：水稻、玉米、大豆" maxlength="30" />
             </el-form-item>
@@ -132,7 +132,7 @@ function handleReset() {
         </el-divider>
 
         <el-row :gutter="24">
-          <el-col :span="8">
+          <el-col :xs="24" :sm="12" :md="8">
             <el-form-item label="确权耕地总面积" prop="landConfirmedArea">
               <div class="unit-input">
                 <el-input-number v-model="form.landConfirmedArea" :min="0" :precision="1" controls-position="right" />
@@ -140,7 +140,7 @@ function handleReset() {
               </div>
             </el-form-item>
           </el-col>
-          <el-col :span="8">
+          <el-col :xs="24" :sm="12" :md="8">
             <el-form-item label="土地流转合同年限" prop="landTransferYears">
               <div class="unit-input">
                 <el-input-number
@@ -154,7 +154,7 @@ function handleReset() {
               </div>
             </el-form-item>
           </el-col>
-          <el-col :span="8">
+          <el-col :xs="24" :sm="12" :md="8">
             <el-form-item label="黑土地保护耕作">
               <div class="unit-input">
                 <el-input-number v-model="form.blackSoilProtection" :min="0" :precision="1" controls-position="right" />
@@ -165,7 +165,7 @@ function handleReset() {
         </el-row>
 
         <el-row :gutter="24">
-          <el-col :span="12">
+          <el-col :xs="24" :md="12">
             <el-form-item label="土地流转稳定性" prop="landTransferStability">
               <el-select v-model="form.landTransferStability" placeholder="近 3 年地块变更情况" style="width: 100%">
                 <el-option v-for="item in stabilityOptions" :key="item.value" :label="item.label" :value="item.value" />
@@ -181,7 +181,7 @@ function handleReset() {
         </el-divider>
 
         <el-row :gutter="24">
-          <el-col :span="12">
+          <el-col :xs="24" :md="12">
             <el-form-item label="耕地地力保护补贴" prop="grainSubsidy">
               <div class="unit-input">
                 <el-input-number v-model="form.grainSubsidy" :min="0" :precision="0" controls-position="right" />
@@ -189,7 +189,7 @@ function handleReset() {
               </div>
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col :xs="24" :md="12">
             <el-form-item label="大型农机购置补贴">
               <div class="unit-input">
                 <el-input-number v-model="form.machinerySubsidy" :min="0" :precision="0" controls-position="right" />
@@ -200,7 +200,7 @@ function handleReset() {
         </el-row>
 
         <el-row :gutter="24">
-          <el-col :span="12">
+          <el-col :xs="24" :md="12">
             <el-form-item label="粮食规模种植补贴">
               <div class="unit-input">
                 <el-input-number v-model="form.grainScaleSubsidy" :min="0" :precision="0" controls-position="right" />
@@ -208,7 +208,7 @@ function handleReset() {
               </div>
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col :xs="24" :md="12">
             <el-form-item label="特色经济作物补贴">
               <div class="unit-input">
                 <el-input-number
@@ -230,7 +230,7 @@ function handleReset() {
         </el-divider>
 
         <el-row :gutter="24">
-          <el-col :span="8">
+          <el-col :xs="24" :sm="12" :md="8">
             <el-form-item label="连续投保年限" prop="insuranceYears">
               <div class="unit-input">
                 <el-input-number
@@ -244,7 +244,7 @@ function handleReset() {
               </div>
             </el-form-item>
           </el-col>
-          <el-col :span="8">
+          <el-col :xs="24" :sm="12" :md="8">
             <el-form-item label="历史理赔频次">
               <div class="unit-input">
                 <el-input-number
@@ -258,7 +258,7 @@ function handleReset() {
               </div>
             </el-form-item>
           </el-col>
-          <el-col :span="8">
+          <el-col :xs="24" :sm="12" :md="8">
             <el-form-item label="设施农业附加险" prop="facilityInsurance">
               <el-select v-model="form.facilityInsurance" placeholder="请选择" style="width: 100%">
                 <el-option v-for="item in facilityOptions" :key="item.value" :label="item.label" :value="item.value" />
@@ -274,7 +274,7 @@ function handleReset() {
         </el-divider>
 
         <el-row :gutter="24">
-          <el-col :span="8">
+          <el-col :xs="24" :sm="12" :md="8">
             <el-form-item label="持续经营年限" prop="yearsOperating">
               <div class="unit-input">
                 <el-input-number
@@ -288,7 +288,7 @@ function handleReset() {
               </div>
             </el-form-item>
           </el-col>
-          <el-col :span="8">
+          <el-col :xs="24" :sm="12" :md="8">
             <el-form-item label="年稳定营收" prop="annualRevenue">
               <div class="unit-input">
                 <el-input-number v-model="form.annualRevenue" :min="0" :precision="1" controls-position="right" />
@@ -296,7 +296,7 @@ function handleReset() {
               </div>
             </el-form-item>
           </el-col>
-          <el-col :span="8">
+          <el-col :xs="24" :sm="12" :md="8">
             <el-form-item label="长期收购订单" prop="purchaseOrder">
               <el-select v-model="form.purchaseOrder" placeholder="请选择" style="width: 100%">
                 <el-option v-for="item in orderOptions" :key="item.value" :label="item.label" :value="item.value" />
@@ -306,7 +306,7 @@ function handleReset() {
         </el-row>
 
         <el-row :gutter="24">
-          <el-col :span="12">
+          <el-col :xs="24" :md="12">
             <el-form-item label="历年信贷履约" prop="creditRecord">
               <el-select v-model="form.creditRecord" placeholder="请选择" style="width: 100%">
                 <el-option v-for="item in creditOptions" :key="item.value" :label="item.label" :value="item.value" />

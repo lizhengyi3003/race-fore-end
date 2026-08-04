@@ -64,7 +64,7 @@ const advantages = [
         <h2>行业痛点</h2>
       </div>
       <el-row :gutter="20">
-        <el-col v-for="pain in painPoints" :key="pain.title" :span="8">
+        <el-col v-for="pain in painPoints" :key="pain.title" :xs="24" :sm="12" :md="8">
           <div class="pain-card info-card">
             <el-icon :size="36" :color="pain.color" class="pain-icon">
               <component :is="pain.icon" />
@@ -83,7 +83,7 @@ const advantages = [
         <h2>三大创新点</h2>
       </div>
       <el-row :gutter="20">
-        <el-col v-for="adv in advantages" :key="adv.title" :span="8">
+        <el-col v-for="adv in advantages" :key="adv.title" :xs="24" :sm="12" :md="8">
           <div class="advantage-card info-card">
             <div class="adv-number">{{ adv.number }}</div>
             <h3>{{ adv.title }}</h3>
