@@ -7,10 +7,10 @@ import { useRiskStore } from '@/stores/risk'
 const router = useRouter()
 const riskStore = useRiskStore()
 
-// 移动端表单改为「标签在上、输入在下」的左对齐布局
-const isMobile = ref(window.innerWidth <= 768)
+// 平板/手机表单改为「标签在上、输入在下」的左对齐布局（< 992px）
+const isMobile = ref(window.innerWidth <= 992)
 function updateIsMobile() {
-  isMobile.value = window.innerWidth <= 768
+  isMobile.value = window.innerWidth <= 992
 }
 onMounted(() => window.addEventListener('resize', updateIsMobile))
 onBeforeUnmount(() => window.removeEventListener('resize', updateIsMobile))
@@ -146,7 +146,7 @@ function handleReset() {
         </el-divider>
 
         <el-row :gutter="24">
-          <el-col :xs="24" :sm="12" :md="8">
+          <el-col :xs="24" :sm="24" :md="12" :lg="8">
             <el-form-item label="确权耕地总面积" prop="landConfirmedArea">
               <div class="unit-input">
                 <el-input-number v-model="form.landConfirmedArea" :min="0" :precision="1" controls-position="right" />
@@ -154,7 +154,7 @@ function handleReset() {
               </div>
             </el-form-item>
           </el-col>
-          <el-col :xs="24" :sm="12" :md="8">
+          <el-col :xs="24" :sm="24" :md="12" :lg="8">
             <el-form-item label="土地流转合同年限" prop="landTransferYears">
               <div class="unit-input">
                 <el-input-number
@@ -168,7 +168,7 @@ function handleReset() {
               </div>
             </el-form-item>
           </el-col>
-          <el-col :xs="24" :sm="12" :md="8">
+          <el-col :xs="24" :sm="24" :md="12" :lg="8">
             <el-form-item label="黑土地保护耕作">
               <div class="unit-input">
                 <el-input-number v-model="form.blackSoilProtection" :min="0" :precision="1" controls-position="right" />
@@ -244,7 +244,7 @@ function handleReset() {
         </el-divider>
 
         <el-row :gutter="24">
-          <el-col :xs="24" :sm="12" :md="8">
+          <el-col :xs="24" :sm="24" :md="12" :lg="8">
             <el-form-item label="连续投保年限" prop="insuranceYears">
               <div class="unit-input">
                 <el-input-number
@@ -258,7 +258,7 @@ function handleReset() {
               </div>
             </el-form-item>
           </el-col>
-          <el-col :xs="24" :sm="12" :md="8">
+          <el-col :xs="24" :sm="24" :md="12" :lg="8">
             <el-form-item label="历史理赔频次">
               <div class="unit-input">
                 <el-input-number
@@ -272,7 +272,7 @@ function handleReset() {
               </div>
             </el-form-item>
           </el-col>
-          <el-col :xs="24" :sm="12" :md="8">
+          <el-col :xs="24" :sm="24" :md="12" :lg="8">
             <el-form-item label="设施农业附加险" prop="facilityInsurance">
               <el-select v-model="form.facilityInsurance" placeholder="请选择" style="width: 100%">
                 <el-option v-for="item in facilityOptions" :key="item.value" :label="item.label" :value="item.value" />
@@ -288,7 +288,7 @@ function handleReset() {
         </el-divider>
 
         <el-row :gutter="24">
-          <el-col :xs="24" :sm="12" :md="8">
+          <el-col :xs="24" :sm="24" :md="12" :lg="8">
             <el-form-item label="持续经营年限" prop="yearsOperating">
               <div class="unit-input">
                 <el-input-number
@@ -302,7 +302,7 @@ function handleReset() {
               </div>
             </el-form-item>
           </el-col>
-          <el-col :xs="24" :sm="12" :md="8">
+          <el-col :xs="24" :sm="24" :md="12" :lg="8">
             <el-form-item label="年稳定营收" prop="annualRevenue">
               <div class="unit-input">
                 <el-input-number v-model="form.annualRevenue" :min="0" :precision="1" controls-position="right" />
@@ -310,7 +310,7 @@ function handleReset() {
               </div>
             </el-form-item>
           </el-col>
-          <el-col :xs="24" :sm="12" :md="8">
+          <el-col :xs="24" :sm="24" :md="12" :lg="8">
             <el-form-item label="长期收购订单" prop="purchaseOrder">
               <el-select v-model="form.purchaseOrder" placeholder="请选择" style="width: 100%">
                 <el-option v-for="item in orderOptions" :key="item.value" :label="item.label" :value="item.value" />

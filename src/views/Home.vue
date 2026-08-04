@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 
-// 移动端：技术路线步骤改为纵向排列
-const isMobile = ref(window.innerWidth <= 768)
+// 平板/手机：技术路线步骤改为纵向排列
+const isMobile = ref(window.innerWidth <= 992)
 function updateIsMobile() {
-  isMobile.value = window.innerWidth <= 768
+  isMobile.value = window.innerWidth <= 992
 }
 onMounted(() => window.addEventListener('resize', updateIsMobile))
 onBeforeUnmount(() => window.removeEventListener('resize', updateIsMobile))

@@ -9,8 +9,8 @@ const route = useRoute()
 const authStore = useAuthStore()
 
 const isCollapsed = ref(false)
-// 移动端状态（< 768px 视为移动端）
-const isMobile = ref(window.innerWidth <= 768)
+// 平板/手机（< 992px）使用抽屉菜单，避免侧边栏挤压内容区
+const isMobile = ref(window.innerWidth <= 992)
 const mobileMenuOpen = ref(false)
 
 const menus = [
@@ -22,7 +22,7 @@ const menus = [
 ]
 
 function updateIsMobile() {
-  isMobile.value = window.innerWidth <= 768
+  isMobile.value = window.innerWidth <= 992
   if (!isMobile.value) {
     mobileMenuOpen.value = false
   }
