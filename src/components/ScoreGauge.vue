@@ -35,8 +35,8 @@ function buildOption() {
         radius: '82%',
         min: 0,
         max: maxScore.value,
-        // 0~1000 每 100 一个刻度，配合 320 容器保证标签不重叠
-        splitNumber: 10,
+        // 0~1000 分 5 段 → 刻度 0/200/400/600/800/1000，小尺寸下标签不重叠
+        splitNumber: 5,
         axisLine: {
           show: true,
           lineStyle: {
@@ -61,9 +61,9 @@ function buildOption() {
           lineStyle: { color: 'inherit', width: 4 },
         },
         axisLabel: {
-          distance: 20,
+          distance: 16,
           color: '#909399',
-          fontSize: 12,
+          fontSize: 11,
         },
         anchor: {
           show: true,

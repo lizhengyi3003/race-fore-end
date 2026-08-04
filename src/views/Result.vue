@@ -32,6 +32,9 @@ onBeforeUnmount(() => {
 
 const result = computed(() => riskStore.riskResult!)
 
+// 贡献图移动端最小宽度（每个指标约 96px），超出时容器横向滑动
+const contributionMinWidth = computed(() => (result.value?.contributions?.length || 6) * 96)
+
 const probabilityPercent = computed(() => (result.value ? (result.value.probability * 100).toFixed(2) : '0.00'))
 
 // 打印报告
@@ -48,6 +51,7 @@ function initBarChart() {
   barChart = chart
 
   const contribs = result.value.contributions.sort((a, b) => b.score - a.score)
+  const factorCount = contribs.length
 
   chart.setOption({
     tooltip: {
@@ -58,17 +62,22 @@ function initBarChart() {
         return `${p.name}<br/>得分：${p.value.toFixed(1)} 分`
       },
     },
-    // 右侧留白加大，避免「100分」轴标签与柱顶数值被裁切
-    grid: { top: 20, right: 64, bottom: 40, left: 80 },
+    // 纵向柱状图：指标名称在底部横轴，容器可横向滑动，避免左侧长名称占位过大
+    grid: { top: 32, right: 20, bottom: 28, left: 46 },
     xAxis: {
-      type: 'value',
-      max: 100,
-      axisLabel: { formatter: '{value}分' },
-    },
-    yAxis: {
       type: 'category',
       data: contribs.map((c) => c.factor),
-      axisLabel: { fontSize: 12 },
+      axisLabel: {
+        fontSize: 10,
+        interval: 0,
+        // 指标较多时倾斜避免重叠
+        rotate: factorCount >= 7 ? 25 : 0,
+      },
+    },
+    yAxis: {
+      type: 'value',
+      max: 100,
+      axisLabel: { formatter: '{value}分', fontSize: 10 },
     },
     series: [
       {
@@ -77,13 +86,13 @@ function initBarChart() {
           value: c.score,
           itemStyle: {
             color: c.score >= 80 ? '#67c23a' : c.score >= 60 ? '#e6a23c' : '#f56c6c',
-            borderRadius: [0, 4, 4, 0],
+            borderRadius: [4, 4, 0, 0],
           },
         })),
-        barWidth: 20,
+        barWidth: 26,
         label: {
           show: true,
-          position: 'right',
+          position: 'top',
           formatter: '{c}',
           fontSize: 11,
         },
@@ -203,7 +212,14 @@ function goBack() {
     <!-- 因子贡献图 -->
     <div class="info-card chart-card">
       <h3 class="card-title">各指标得分贡献</h3>
-      <div ref="barChartRef" style="width: 100%; height: 360px" />
+      <div class="contribution-scroll">
+        <div
+          ref="barChartRef"
+          class="contribution-chart"
+          :style="{ minWidth: contributionMinWidth + 'px' }"
+        />
+      </div>
+      <p class="scroll-hint">← 左右滑动查看全部指标 →</p>
     </div>
 
     <!-- 操作按钮 -->
@@ -317,6 +333,32 @@ function goBack() {
 
 .chart-card {
   margin-bottom: 20px;
+}
+
+// 贡献图：移动端横向滑动，避免因子名称占满左侧
+.contribution-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+
+  .contribution-chart {
+    width: 100%;
+    height: 320px;
+  }
+}
+
+.scroll-hint {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .scroll-hint {
+    display: block;
+    text-align: center;
+    font-size: 12px;
+    color: #909399;
+    margin-top: 8px;
+  }
 }
 
 .deduction-card {
