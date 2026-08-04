@@ -216,6 +216,11 @@ function goBack() {
 <style scoped lang="scss">
 .result-cards {
   margin-bottom: 20px;
+
+  // 移动端卡片堆叠时保留纵向间距
+  .el-col {
+    margin-bottom: 16px;
+  }
 }
 
 .card-title {
@@ -302,6 +307,10 @@ function goBack() {
 
 .deduction-card {
   margin-bottom: 20px;
+
+  .el-row .el-col {
+    margin-bottom: 16px;
+  }
 
   .deduction-item {
     display: flex;
