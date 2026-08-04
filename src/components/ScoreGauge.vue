@@ -53,15 +53,15 @@ function buildOption() {
           },
         },
         axisTick: {
-          length: 10,
+          length: 6,
           lineStyle: { color: 'inherit', width: 2 },
         },
         splitLine: {
-          length: 22,
-          lineStyle: { color: 'inherit', width: 4 },
+          length: 14,
+          lineStyle: { color: 'inherit', width: 3 },
         },
         axisLabel: {
-          distance: 16,
+          distance: 18,
           color: '#909399',
           fontSize: 11,
         },
