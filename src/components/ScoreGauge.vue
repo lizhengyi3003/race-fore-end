@@ -78,9 +78,9 @@ function buildOption() {
         },
         detail: {
           valueAnimation: true,
-          fontSize: 30,
-          // 上移大数字，避免低分辨率下与底部刻度标签重叠
-          offsetCenter: [0, '46%'],
+          fontSize: 28,
+          // 数字靠近表针中心，避免低分辨率下与两侧/底部刻度标签（0/200/400…）重叠
+          offsetCenter: [0, '36%'],
           formatter: '{value}',
           color: 'inherit',
           fontWeight: 700,
