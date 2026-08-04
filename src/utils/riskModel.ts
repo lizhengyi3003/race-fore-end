@@ -194,21 +194,96 @@ export function calculateRiskScore(input: RiskInput): RiskResult {
 
   // --- 15 项指标子得分与权重 ---
   const indicators: { factor: string; category: string; weight: number; score: number }[] = [
-    { factor: '确权耕地总面积', category: '土地经营类', weight: WEIGHTS.landConfirmedArea, score: scoreLandConfirmedArea(landConfirmedArea) },
-    { factor: '土地流转合同年限', category: '土地经营类', weight: WEIGHTS.landTransferYears, score: scoreLandTransferYears(landTransferYears) },
-    { factor: '土地流转稳定性', category: '土地经营类', weight: WEIGHTS.landTransferStability, score: scoreLandTransferStability(landTransferStability) },
-    { factor: '黑土地保护性耕作面积', category: '土地经营类', weight: WEIGHTS.blackSoilProtection, score: scoreBlackSoilProtection(blackSoilProtection) },
-    { factor: '耕地地力保护补贴', category: '农业补贴类', weight: WEIGHTS.grainSubsidy, score: scoreGrainSubsidy(grainSubsidy) },
-    { factor: '大型农机购置补贴', category: '农业补贴类', weight: WEIGHTS.machinerySubsidy, score: scoreMachinerySubsidy(machinerySubsidy) },
-    { factor: '粮食规模种植专项补贴', category: '农业补贴类', weight: WEIGHTS.grainScaleSubsidy, score: scoreGrainScaleSubsidy(grainScaleSubsidy) },
-    { factor: '特色经济作物补贴', category: '农业补贴类', weight: WEIGHTS.specialtyCropSubsidy, score: scoreSpecialtyCropSubsidy(specialtyCropSubsidy) },
-    { factor: '农业保险连续投保年限', category: '农业保险类', weight: WEIGHTS.insuranceYears, score: scoreInsuranceYears(insuranceYears) },
-    { factor: '历史保险理赔频次', category: '农业保险类', weight: WEIGHTS.claimCount, score: scoreClaimCount(claimCount) },
-    { factor: '设施农业附加保险', category: '农业保险类', weight: WEIGHTS.facilityInsurance, score: scoreFacilityInsurance(facilityInsurance) },
-    { factor: '主体持续经营年限', category: '产销经营类', weight: WEIGHTS.yearsOperating, score: scoreYearsOperating(yearsOperating) },
-    { factor: '长期农产品收购订单', category: '产销经营类', weight: WEIGHTS.purchaseOrder, score: scorePurchaseOrder(purchaseOrder) },
-    { factor: '农产品年稳定营收', category: '产销经营类', weight: WEIGHTS.annualRevenue, score: scoreAnnualRevenue(annualRevenue) },
-    { factor: '历年涉农信贷履约记录', category: '产销经营类', weight: WEIGHTS.creditRecord, score: scoreCreditRecord(creditRecord) },
+    {
+      factor: '确权耕地总面积',
+      category: '土地经营类',
+      weight: WEIGHTS.landConfirmedArea,
+      score: scoreLandConfirmedArea(landConfirmedArea),
+    },
+    {
+      factor: '土地流转合同年限',
+      category: '土地经营类',
+      weight: WEIGHTS.landTransferYears,
+      score: scoreLandTransferYears(landTransferYears),
+    },
+    {
+      factor: '土地流转稳定性',
+      category: '土地经营类',
+      weight: WEIGHTS.landTransferStability,
+      score: scoreLandTransferStability(landTransferStability),
+    },
+    {
+      factor: '黑土地保护性耕作面积',
+      category: '土地经营类',
+      weight: WEIGHTS.blackSoilProtection,
+      score: scoreBlackSoilProtection(blackSoilProtection),
+    },
+    {
+      factor: '耕地地力保护补贴',
+      category: '农业补贴类',
+      weight: WEIGHTS.grainSubsidy,
+      score: scoreGrainSubsidy(grainSubsidy),
+    },
+    {
+      factor: '大型农机购置补贴',
+      category: '农业补贴类',
+      weight: WEIGHTS.machinerySubsidy,
+      score: scoreMachinerySubsidy(machinerySubsidy),
+    },
+    {
+      factor: '粮食规模种植专项补贴',
+      category: '农业补贴类',
+      weight: WEIGHTS.grainScaleSubsidy,
+      score: scoreGrainScaleSubsidy(grainScaleSubsidy),
+    },
+    {
+      factor: '特色经济作物补贴',
+      category: '农业补贴类',
+      weight: WEIGHTS.specialtyCropSubsidy,
+      score: scoreSpecialtyCropSubsidy(specialtyCropSubsidy),
+    },
+    {
+      factor: '农业保险连续投保年限',
+      category: '农业保险类',
+      weight: WEIGHTS.insuranceYears,
+      score: scoreInsuranceYears(insuranceYears),
+    },
+    {
+      factor: '历史保险理赔频次',
+      category: '农业保险类',
+      weight: WEIGHTS.claimCount,
+      score: scoreClaimCount(claimCount),
+    },
+    {
+      factor: '设施农业附加保险',
+      category: '农业保险类',
+      weight: WEIGHTS.facilityInsurance,
+      score: scoreFacilityInsurance(facilityInsurance),
+    },
+    {
+      factor: '主体持续经营年限',
+      category: '产销经营类',
+      weight: WEIGHTS.yearsOperating,
+      score: scoreYearsOperating(yearsOperating),
+    },
+    {
+      factor: '长期农产品收购订单',
+      category: '产销经营类',
+      weight: WEIGHTS.purchaseOrder,
+      score: scorePurchaseOrder(purchaseOrder),
+    },
+    {
+      factor: '农产品年稳定营收',
+      category: '产销经营类',
+      weight: WEIGHTS.annualRevenue,
+      score: scoreAnnualRevenue(annualRevenue),
+    },
+    {
+      factor: '历年涉农信贷履约记录',
+      category: '产销经营类',
+      weight: WEIGHTS.creditRecord,
+      score: scoreCreditRecord(creditRecord),
+    },
   ]
 
   // --- 加权汇总 → 0-1000 评分卡刻度 ---

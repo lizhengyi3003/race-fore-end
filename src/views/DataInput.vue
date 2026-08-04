@@ -157,12 +157,7 @@ function handleReset() {
           <el-col :span="8">
             <el-form-item label="黑土地保护耕作">
               <div class="unit-input">
-                <el-input-number
-                  v-model="form.blackSoilProtection"
-                  :min="0"
-                  :precision="1"
-                  controls-position="right"
-                />
+                <el-input-number v-model="form.blackSoilProtection" :min="0" :precision="1" controls-position="right" />
                 <span class="unit-label">亩</span>
               </div>
             </el-form-item>
