@@ -10,17 +10,3 @@ export async function submitRiskAssessment(data: RiskInput): Promise<RiskResult>
   const res = await http.post<RiskResult>('/risk/assess', data)
   return res.data
 }
-
-/**
- * 获取评估历史（预留接口）
- */
-export async function getAssessmentHistory(): Promise<RiskResult[]> {
-  try {
-    const res = await http.get<{ items: RiskResult[] }>('/risk/records', {
-      params: { page: 1, size: 20 },
-    })
-    return res.data?.items ?? []
-  } catch {
-    return []
-  }
-}

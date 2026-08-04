@@ -71,15 +71,16 @@ function buildOption() {
         },
         title: {
           show: true,
-          offsetCenter: [0, '80%'],
-          fontSize: 14,
+          offsetCenter: [0, '82%'],
+          fontSize: 13,
           color: '#606266',
           fontWeight: 600,
         },
         detail: {
           valueAnimation: true,
-          fontSize: 32,
-          offsetCenter: [0, '55%'],
+          fontSize: 30,
+          // 上移大数字，避免低分辨率下与底部刻度标签重叠
+          offsetCenter: [0, '46%'],
           formatter: '{value}',
           color: 'inherit',
           fontWeight: 700,

@@ -134,10 +134,12 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateIsMobile))
             <Fold v-if="!isCollapsed" />
             <Expand v-else />
           </el-icon>
-          <span class="header-title">{{ isMobile ? '涉农风控系统' : '基于多元统计模型的涉农小微企业信贷风险智能评估系统' }}</span>
+          <span class="header-title">{{
+            isMobile ? '涉农风控系统' : '基于多元统计模型的涉农小微企业信贷风险智能评估系统'
+          }}</span>
         </div>
         <div class="header-right">
-          <el-tag v-if="!isMobile" type="success" effect="dark" round>Demo v1.0</el-tag>
+          <el-tag v-if="!isMobile" type="success" effect="dark" round>Demo v1.1</el-tag>
           <el-dropdown trigger="click" @command="(cmd: string) => cmd === 'logout' && handleLogout()">
             <div class="user-info">
               <el-icon :size="18"><UserFilled /></el-icon>

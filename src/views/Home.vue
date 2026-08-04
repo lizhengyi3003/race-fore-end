@@ -123,12 +123,6 @@ const advantages = [
   </div>
 </template>
 
-<script lang="ts">
-export default {
-  name: 'HomeView',
-}
-</script>
-
 <style scoped lang="scss">
 .hero-section {
   background: linear-gradient(135deg, #1a1a2e 0%, #2c6e49 50%, #4c956c 100%);

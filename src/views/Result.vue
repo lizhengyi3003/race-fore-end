@@ -213,11 +213,7 @@ function goBack() {
     <div class="info-card chart-card">
       <h3 class="card-title">各指标得分贡献</h3>
       <div class="contribution-scroll">
-        <div
-          ref="barChartRef"
-          class="contribution-chart"
-          :style="{ minWidth: contributionMinWidth + 'px' }"
-        />
+        <div ref="barChartRef" class="contribution-chart" :style="{ minWidth: contributionMinWidth + 'px' }" />
       </div>
       <p class="scroll-hint">← 左右滑动查看全部指标 →</p>
     </div>
