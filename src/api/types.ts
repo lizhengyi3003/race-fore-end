@@ -55,18 +55,3 @@ export interface RiskResult {
   deductions: Deduction[] // 前三项扣分原因
   advice: string // 信贷建议文本
 }
-
-/** 四大维度指标分类 */
-export const CATEGORIES = {
-  土地经营类: 'land',
-  农业补贴类: 'subsidy',
-  农业保险类: 'insurance',
-  产销经营类: 'operation',
-} as const
-
-/** API 通用响应 */
-export interface ApiResponse<T> {
-  code: number
-  message: string
-  data: T
-}

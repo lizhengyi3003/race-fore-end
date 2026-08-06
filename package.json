@@ -1,7 +1,7 @@
 {
   "name": "race-fore-end",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,6 +12,7 @@
     "format:check": "prettier --check \"src/**/*.{ts,vue,scss,css,json}\""
   },
   "dependencies": {
+    "@element-plus/icons-vue": "^2.3.2",
     "axios": "^1.18.1",
     "echarts": "^6.1.0",
     "element-plus": "^2.14.3",

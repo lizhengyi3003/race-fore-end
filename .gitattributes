@@ -1,0 +1,16 @@
+# 统一行尾：文本文件一律 LF（配合 .editorconfig）
+* text=auto eol=lf
+
+# 二进制文件不进行行尾转换
+*.docx binary
+*.xlsx binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
