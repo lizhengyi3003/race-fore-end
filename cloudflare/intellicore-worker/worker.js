@@ -5,10 +5,37 @@
 //
 // 说明：race-fore-end 前端仅使用 /api/v1/* 接口，无需 /chat 的 Workers AI 功能，
 //       因此本网关统一代理到后端；如需恢复 AI 聊天，请在此基础上补充 Workers AI 绑定。
+//
+// CORS：回显请求 Origin（Allow-Origin: <origin>）并预检放行，允许任意来源调用
+//       （含 *.workers.dev 预览部署域名）。竞赛演示项目放宽跨域，生产建议收敛为白名单。
+const ALLOWED_METHODS = 'GET,POST,PUT,DELETE,PATCH,OPTIONS'
+const ALLOWED_HEADERS = 'Content-Type,Authorization,X-Requested-With,Accept,Origin'
+
+function corsHeaders(origin) {
+  return {
+    'Access-Control-Allow-Origin': origin || '*',
+    'Access-Control-Allow-Methods': ALLOWED_METHODS,
+    'Access-Control-Allow-Headers': ALLOWED_HEADERS,
+    'Access-Control-Allow-Credentials': 'true',
+    'Access-Control-Max-Age': '86400',
+    'Vary': 'Origin',
+  }
+}
+
 export default {
   async fetch(request) {
     const start = Date.now()
     const url = new URL(request.url)
+    const origin = request.headers.get('Origin') || ''
+
+    // CORS 预检
+    if (request.method === 'OPTIONS') {
+      return new Response(null, {
+        status: 204,
+        headers: corsHeaders(origin),
+      })
+    }
+
     const targetUrl = 'https://backend.intellicoretech.cn' + url.pathname + url.search
 
     const headers = new Headers(request.headers)
@@ -29,6 +56,11 @@ export default {
       const responseHeaders = new Headers(resp.headers)
       responseHeaders.set('cfWorker', 'intellicore-worker')
       responseHeaders.set('dur', String(Date.now() - start))
+      // 追加 CORS 头
+      const cors = corsHeaders(origin)
+      for (const [k, v] of Object.entries(cors)) {
+        responseHeaders.set(k, v)
+      }
       return new Response(resp.body, {
         status: resp.status,
         statusText: resp.statusText,
@@ -43,6 +75,7 @@ export default {
             'content-type': 'application/json',
             cfWorker: 'intellicore-worker',
             dur: String(Date.now() - start),
+            ...corsHeaders(origin),
           },
         },
       )
