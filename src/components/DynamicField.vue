@@ -1,7 +1,11 @@
 <script setup lang="ts">
+import type { PropType } from 'vue'
 import type { IndicatorField } from '@/api/types'
 
-const props = defineProps<{ field: IndicatorField; modelValue: string | undefined }>()
+const props = defineProps({
+  field: { type: Object as PropType<IndicatorField>, required: true },
+  modelValue: { type: String, default: '' },
+})
 const emit = defineEmits<{ (e: 'update:modelValue', v: string): void }>()
 
 function setVal(v: string | number | boolean | undefined | null) {
