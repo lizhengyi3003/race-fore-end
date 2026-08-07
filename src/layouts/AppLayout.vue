@@ -139,7 +139,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateIsMobile))
           }}</span>
         </div>
         <div class="header-right">
-          <el-tag v-if="!isMobile" type="success" effect="dark" round>Demo v1.1</el-tag>
+          <el-tag v-if="!isMobile" type="success" effect="dark" round>Demo v1.4</el-tag>
           <el-dropdown trigger="click" @command="(cmd: string) => cmd === 'logout' && handleLogout()">
             <div class="user-info">
               <el-icon :size="18"><UserFilled /></el-icon>
