@@ -12,7 +12,7 @@ const riskStore = useRiskStore()
 
 const loading = ref(false)
 const submitting = ref(false)
-const tree = ref<{ categories: CategoryNode[] } | null>(null)
+const tree = ref<{ basic: IndicatorField[]; categories: CategoryNode[] } | null>(null)
 
 // ---------- 基本信息 ----------
 const enterpriseName = ref('')
@@ -26,9 +26,9 @@ const mixedRatios = reactive<Record<string, number>>({})
 // ---------- 动态指标值 ----------
 const values = reactive<Record<string, string>>({})
 
-// ---------- 渐进式展开 ----------
-const expandedMiddle = ref<string[]>([])
-const expandedSmall = ref<string[]>([])
+// ---------- 渐进式勾选（中类/小类层级）----------
+const checkedMiddle = ref<string[]>([])
+const checkedSmall = reactive<Record<string, string[]>>({})
 const basicFields = ref<IndicatorField[]>([])
 // 按类别编码缓存指标（大类码 / 中类码 / 小类码）
 const indicatorMap = reactive<Record<string, IndicatorField[]>>({})
@@ -60,17 +60,20 @@ function bigFields(): IndicatorField[] {
   return businessType.value && !isMixed.value ? fieldsOf(businessType.value) : []
 }
 
-function isMiddleExpanded(code: string) {
-  return expandedMiddle.value.includes(code)
+function isMiddleChecked(code: string) {
+  return checkedMiddle.value.includes(code)
 }
-function isSmallExpanded(code: string) {
-  return expandedSmall.value.includes(code)
+function isSmallChecked(middleCode: string, smallCode: string) {
+  return (checkedSmall[middleCode] ?? []).includes(smallCode)
 }
 
 async function init() {
   loading.value = true
   try {
     tree.value = await getIndicatorTree()
+    // 基本项不依赖经营类型，初始化即加载，可先填写
+    basicFields.value = tree.value.basic
+    ensureValues(basicFields.value)
   } catch {
     ElMessage.error('指标配置加载失败，请确认后端已启动')
   } finally {
@@ -79,49 +82,55 @@ async function init() {
 }
 
 async function onBusinessTypeChange() {
-  // 清空旧状态
-  expandedMiddle.value = []
-  expandedSmall.value = []
+  // 清空旧状态（基本项已初始化加载，其填写值保留）
+  checkedMiddle.value = []
+  Object.keys(checkedSmall).forEach((k) => delete checkedSmall[k])
   Object.keys(indicatorMap).forEach((k) => delete indicatorMap[k])
-  Object.keys(values).forEach((k) => delete values[k])
-  basicFields.value = []
+  const basicCodes = new Set(basicFields.value.map((f) => f.code))
+  Object.keys(values).forEach((k) => {
+    if (!basicCodes.has(k)) delete values[k]
+  })
   if (!businessType.value || isMixed.value) return
   const cfg = await getIndicatorConfig({ businessType: businessType.value })
-  basicFields.value = cfg.basic
   indicatorMap[businessType.value] = cfg.indicators.filter((f) => f.level === '大类')
-  ensureValues(cfg.basic)
   ensureValues(indicatorMap[businessType.value])
 }
 
-async function toggleMiddle(middle: CategoryNode) {
-  const idx = expandedMiddle.value.indexOf(middle.code)
-  if (idx >= 0) {
-    expandedMiddle.value.splice(idx, 1)
-    return
-  }
-  expandedMiddle.value.push(middle.code)
-  if (!indicatorMap[middle.code]) {
-    const cfg = await getIndicatorConfig({ businessType: businessType.value, middleType: middle.code })
-    indicatorMap[middle.code] = cfg.indicators.filter((f) => f.level === '中类')
-    ensureValues(indicatorMap[middle.code])
+async function onMiddleToggle(middle: CategoryNode, checked: boolean) {
+  const idx = checkedMiddle.value.indexOf(middle.code)
+  if (checked) {
+    if (idx < 0) checkedMiddle.value.push(middle.code)
+    if (!indicatorMap[middle.code]) {
+      const cfg = await getIndicatorConfig({ businessType: businessType.value, middleType: middle.code })
+      indicatorMap[middle.code] = cfg.indicators.filter((f) => f.level === '中类')
+      ensureValues(indicatorMap[middle.code])
+    }
+  } else {
+    if (idx >= 0) checkedMiddle.value.splice(idx, 1)
+    delete indicatorMap[middle.code]
+    // 级联取消其下小类及小类指标
+    delete checkedSmall[middle.code]
+    smallList(middle.code).forEach((s) => delete indicatorMap[s.code])
   }
 }
 
-async function toggleSmall(small: CategoryNode, middleCode: string) {
-  const idx = expandedSmall.value.indexOf(small.code)
-  if (idx >= 0) {
-    expandedSmall.value.splice(idx, 1)
-    return
-  }
-  expandedSmall.value.push(small.code)
-  if (!indicatorMap[small.code]) {
-    const cfg = await getIndicatorConfig({
-      businessType: businessType.value,
-      middleType: middleCode,
-      smallType: small.code,
-    })
-    indicatorMap[small.code] = cfg.indicators.filter((f) => f.level === '小类')
-    ensureValues(indicatorMap[small.code])
+async function onSmallToggle(middleCode: string, small: CategoryNode, checked: boolean) {
+  const list = (checkedSmall[middleCode] ??= [])
+  const idx = list.indexOf(small.code)
+  if (checked) {
+    if (idx < 0) list.push(small.code)
+    if (!indicatorMap[small.code]) {
+      const cfg = await getIndicatorConfig({
+        businessType: businessType.value,
+        middleType: middleCode,
+        smallType: small.code,
+      })
+      indicatorMap[small.code] = cfg.indicators.filter((f) => f.level === '小类')
+      ensureValues(indicatorMap[small.code])
+    }
+  } else {
+    if (idx >= 0) list.splice(idx, 1)
+    delete indicatorMap[small.code]
   }
 }
 
@@ -192,9 +201,8 @@ function handleReset() {
   Object.keys(mixedRatios).forEach((k) => delete mixedRatios[k])
   Object.keys(values).forEach((k) => delete values[k])
   Object.keys(indicatorMap).forEach((k) => delete indicatorMap[k])
-  expandedMiddle.value = []
-  expandedSmall.value = []
-  basicFields.value = []
+  checkedMiddle.value = []
+  Object.keys(checkedSmall).forEach((k) => delete checkedSmall[k])
 }
 
 onMounted(init)
@@ -233,6 +241,23 @@ onMounted(init)
         </el-row>
       </el-form>
 
+      <!-- 基本项（不依赖经营类型，初始化即加载，可先填写） -->
+      <template v-if="basicFields.length">
+        <div class="section-title">
+          基本项（共 {{ basicFields.length }} 项）
+          <span class="section-sub">所有主体必填的基础信息</span>
+        </div>
+        <el-collapse :model-value="['basic']" class="basic-collapse">
+          <el-collapse-item name="basic" title="展开 / 收起基本项">
+            <el-row :gutter="20">
+              <el-col v-for="f in basicFields" :key="f.code" :xs="24" :md="12" :lg="8">
+                <DynamicField :field="f" v-model="values[f.code]" />
+              </el-col>
+            </el-row>
+          </el-collapse-item>
+        </el-collapse>
+      </template>
+
       <!-- 混合经营比例 -->
       <template v-if="isMixed">
         <div class="section-title">混合经营构成（拖动调整占比）</div>
@@ -266,23 +291,8 @@ onMounted(init)
         <p class="tip">混合经营按所选业务比例加权评分，后续可叠加协同因子（如种养结合生态循环）。</p>
       </template>
 
-      <!-- 单经营类型：基本项 + 渐进式类别 -->
+      <!-- 单经营类型：大类指标 + 中类/小类层级勾选 -->
       <template v-if="!isMixed && businessType">
-        <!-- 基本项 -->
-        <div class="section-title">
-          基本项（共 {{ basicFields.length }} 项）
-          <span class="section-sub">所有主体必填的基础信息</span>
-        </div>
-        <el-collapse :model-value="['basic']" class="basic-collapse">
-          <el-collapse-item name="basic" title="展开 / 收起基本项">
-            <el-row :gutter="20">
-              <el-col v-for="f in basicFields" :key="f.code" :xs="24" :md="12" :lg="8">
-                <DynamicField :field="f" v-model="values[f.code]" />
-              </el-col>
-            </el-row>
-          </el-collapse-item>
-        </el-collapse>
-
         <!-- 大类指标 -->
         <template v-if="bigFields().length">
           <div class="section-title">{{ currentCategory?.display }} · 大类指标（{{ bigFields().length }} 项）</div>
@@ -293,45 +303,39 @@ onMounted(init)
           </el-row>
         </template>
 
-        <!-- 中类渐进 -->
-        <div class="section-title">中类（点击展开填报，共 {{ middleList.length }} 个）</div>
+        <!-- 中类：层级勾选，仅展示所选 -->
+        <div class="section-title">中类（勾选实际经营的类别，共 {{ middleList.length }} 个）</div>
         <div class="level-list">
           <div v-for="m in middleList" :key="m.code" class="level-item">
-            <div
-              class="level-head"
-              :class="{ active: isMiddleExpanded(m.code) }"
-              @click="toggleMiddle(m)"
-            >
-              <el-icon class="arrow">
-                <ArrowRight v-if="!isMiddleExpanded(m.code)" />
-                <ArrowDown v-else />
-              </el-icon>
-              <span class="level-name">{{ m.display }}</span>
-              <el-tag size="small" type="info" effect="plain">{{ m.indicator_count }} 指标</el-tag>
+            <div class="level-head" :class="{ active: isMiddleChecked(m.code) }">
+              <el-checkbox
+                :model-value="isMiddleChecked(m.code)"
+                @change="(v: boolean | string | number) => onMiddleToggle(m, Boolean(v))"
+              >
+                <span class="level-name">{{ m.display }}</span>
+                <el-tag size="small" type="info" effect="plain">{{ m.indicator_count }} 指标</el-tag>
+              </el-checkbox>
             </div>
-            <div v-if="isMiddleExpanded(m.code)" class="level-body">
+            <div v-if="isMiddleChecked(m.code)" class="level-body">
               <!-- 中类指标 -->
               <el-row v-if="fieldsOf(m.code).length" :gutter="20">
                 <el-col v-for="f in fieldsOf(m.code)" :key="f.code" :xs="24" :md="12" :lg="8">
                   <DynamicField :field="f" v-model="values[f.code]" />
                 </el-col>
               </el-row>
-              <!-- 小类 -->
+              <!-- 小类：层级勾选 -->
               <div v-if="smallList(m.code).length" class="level-list sub">
                 <div v-for="s in smallList(m.code)" :key="s.code" class="level-item">
-                  <div
-                    class="level-head"
-                    :class="{ active: isSmallExpanded(s.code) }"
-                    @click="toggleSmall(s, m.code)"
-                  >
-                    <el-icon class="arrow">
-                      <ArrowRight v-if="!isSmallExpanded(s.code)" />
-                      <ArrowDown v-else />
-                    </el-icon>
-                    <span class="level-name">{{ s.display }}</span>
-                    <el-tag size="small" type="info" effect="plain">{{ s.indicator_count }} 指标</el-tag>
+                  <div class="level-head" :class="{ active: isSmallChecked(m.code, s.code) }">
+                    <el-checkbox
+                      :model-value="isSmallChecked(m.code, s.code)"
+                      @change="(v: boolean | string | number) => onSmallToggle(m.code, s, Boolean(v))"
+                    >
+                      <span class="level-name">{{ s.display }}</span>
+                      <el-tag size="small" type="info" effect="plain">{{ s.indicator_count }} 指标</el-tag>
+                    </el-checkbox>
                   </div>
-                  <div v-if="isSmallExpanded(s.code)" class="level-body">
+                  <div v-if="isSmallChecked(m.code, s.code)" class="level-body">
                     <el-row v-if="fieldsOf(s.code).length" :gutter="20">
                       <el-col v-for="f in fieldsOf(s.code)" :key="f.code" :xs="24" :md="12" :lg="8">
                         <DynamicField :field="f" v-model="values[f.code]" />
