@@ -15,7 +15,8 @@ export default defineConfig({
     port: 5174,
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        // 可用环境变量 VITE_DEV_PROXY 覆盖（如本地 venv 后端 8001）
+        target: process.env.VITE_DEV_PROXY || 'http://localhost:8000',
         changeOrigin: true,
       },
     },

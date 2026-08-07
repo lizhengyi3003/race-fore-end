@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { RiskInput, RiskResult } from '@/api/types'
-import { submitRiskAssessment } from '@/api/risk'
+import type { DynamicRiskInput, RiskInput, RiskResult } from '@/api/types'
+import { submitDynamicRiskAssessment, submitRiskAssessment } from '@/api/risk'
 
 export const useRiskStore = defineStore('risk', () => {
   // --- State ---
@@ -96,6 +96,41 @@ export const useRiskStore = defineStore('risk', () => {
     }
   }
 
+  // ================= 动态指标体系（Phase 2）=================
+  const dynamicForm = ref<DynamicRiskInput>({
+    enterpriseName: '',
+    businessType: '',
+    productType: '',
+    mixedBusiness: {},
+    indicators: {},
+  })
+
+  function setDynamicForm(data: Partial<DynamicRiskInput>) {
+    Object.assign(dynamicForm.value, data)
+  }
+
+  function resetDynamicForm() {
+    dynamicForm.value = {
+      enterpriseName: '',
+      businessType: '',
+      productType: '',
+      mixedBusiness: {},
+      indicators: {},
+    }
+    riskResult.value = null
+  }
+
+  async function assessDynamic() {
+    isCalculating.value = true
+    try {
+      riskResult.value = await submitDynamicRiskAssessment(dynamicForm.value)
+    } catch {
+      // 请求失败时保留原结果
+    } finally {
+      isCalculating.value = false
+    }
+  }
+
   return {
     formData,
     riskResult,
@@ -106,5 +141,9 @@ export const useRiskStore = defineStore('risk', () => {
     setFormData,
     resetForm,
     assessRisk,
+    dynamicForm,
+    setDynamicForm,
+    resetDynamicForm,
+    assessDynamic,
   }
 })

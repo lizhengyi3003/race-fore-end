@@ -54,4 +54,64 @@ export interface RiskResult {
   contributions: FactorContribution[] // 各指标贡献度
   deductions: Deduction[] // 前三项扣分原因
   advice: string // 信贷建议文本
+  veto?: string | null // 一票否决命中指标名（动态引擎）
+  completeness?: number // 数据完整度 0~1
+}
+
+// ================= 动态指标体系（Phase 1/2）=================
+
+/** 动态表单字段配置（对应 indicator_config） */
+export interface IndicatorField {
+  code: string
+  name: string
+  level: string // 基本项 / 大类 / 中类 / 小类
+  category_code: string
+  category_name: string
+  indicator_type: '数值' | '枚举' | '布尔' | '文本'
+  unit: string
+  value_range: string
+  options: string[] // 枚举选项
+  data_source: string
+  is_feature: boolean
+  risk_meaning: string
+  weight_star: number
+  region: string
+  is_veto: boolean
+  cycle: string
+  scoring_rule: string
+  required: boolean
+}
+
+/** 指标类别树节点 */
+export interface CategoryNode {
+  code: string
+  name: string
+  level: string
+  display: string
+  indicator_count: number
+  children: CategoryNode[]
+}
+
+/** 指标树：基本项 + 类别树 */
+export interface IndicatorTree {
+  basic: IndicatorField[]
+  categories: CategoryNode[]
+}
+
+/** 渐进式表单配置 */
+export interface IndicatorConfig {
+  basic: IndicatorField[]
+  indicators: IndicatorField[]
+  selected: { businessType: string; middleType: string; smallType: string }
+}
+
+/** 动态评估请求（POST /risk/assess-dynamic） */
+export interface DynamicRiskInput {
+  enterpriseName: string
+  businessType: string // 大类编码 01~10，混合=MIXED
+  productType: string
+  middleType?: string
+  smallType?: string
+  mixedBusiness: Record<string, number> // 混合经营比例 {大类: 0~1}
+  indicators: Record<string, string> // 指标编码 -> 值
 }

@@ -1,5 +1,5 @@
 import http from './index'
-import type { RiskInput, RiskResult } from './types'
+import type { DynamicRiskInput, RiskInput, RiskResult } from './types'
 
 /**
  * 提交风险评估
@@ -8,5 +8,13 @@ import type { RiskInput, RiskResult } from './types'
  */
 export async function submitRiskAssessment(data: RiskInput): Promise<RiskResult> {
   const res = await http.post<RiskResult>('/risk/assess', data)
+  return res.data
+}
+
+/**
+ * 动态指标体系评估（专家引擎）：POST /api/v1/risk/assess-dynamic
+ */
+export async function submitDynamicRiskAssessment(data: DynamicRiskInput): Promise<RiskResult> {
+  const res = await http.post<RiskResult>('/risk/assess-dynamic', data)
   return res.data
 }

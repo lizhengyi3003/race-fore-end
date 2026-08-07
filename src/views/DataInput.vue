@@ -1,83 +1,183 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import type { FormInstance, FormRules } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { useRiskStore } from '@/stores/risk'
+import { getIndicatorConfig, getIndicatorTree } from '@/api/indicator'
+import type { CategoryNode, IndicatorField } from '@/api/types'
+import DynamicField from '@/components/DynamicField.vue'
 
 const router = useRouter()
 const riskStore = useRiskStore()
 
-// 平板/手机表单改为「标签在上、输入在下」的左对齐布局（< 992px）
-const isMobile = ref(window.innerWidth <= 992)
-function updateIsMobile() {
-  isMobile.value = window.innerWidth <= 992
-}
-onMounted(() => window.addEventListener('resize', updateIsMobile))
-onBeforeUnmount(() => window.removeEventListener('resize', updateIsMobile))
-
-const formRef = ref<FormInstance>()
+const loading = ref(false)
 const submitting = ref(false)
+const tree = ref<{ categories: CategoryNode[] } | null>(null)
 
-const form = reactive({ ...riskStore.formData })
+// ---------- 基本信息 ----------
+const enterpriseName = ref('')
+const productType = ref('')
+const businessType = ref('') // 大类编码 01~10 或 MIXED
 
-const businessTypeOptions = [
-  { label: '种植业', value: '种植' },
-  { label: '养殖业', value: '养殖' },
-  { label: '农产品加工', value: '加工' },
-  { label: '混合经营', value: '混合' },
-]
+// ---------- 混合经营 ----------
+const mixedSelected = ref<string[]>([])
+const mixedRatios = reactive<Record<string, number>>({})
 
-const stabilityOptions = [
-  { label: '稳定（近3年地块无变动）', value: '稳定' },
-  { label: '小幅调整（1-2年有调整）', value: '小幅调整' },
-  { label: '频繁变更（年度更换地块）', value: '频繁变更' },
-]
+// ---------- 动态指标值 ----------
+const values = reactive<Record<string, string>>({})
 
-const facilityOptions = [
-  { label: '完整投保附加险', value: '完整投保' },
-  { label: '仅基础种植险', value: '仅基础险' },
-  { label: '未投保', value: '未投保' },
-]
+// ---------- 渐进式展开 ----------
+const expandedMiddle = ref<string[]>([])
+const expandedSmall = ref<string[]>([])
+const basicFields = ref<IndicatorField[]>([])
+// 按类别编码缓存指标（大类码 / 中类码 / 小类码）
+const indicatorMap = reactive<Record<string, IndicatorField[]>>({})
 
-const orderOptions = [
-  { label: '年度固定订单', value: '年度订单' },
-  { label: '零散散户收购', value: '零散收购' },
-  { label: '无稳定收购渠道', value: '无稳定渠道' },
-]
+const bigCategories = computed(() => tree.value?.categories ?? [])
+const isMixed = computed(() => businessType.value === 'MIXED')
 
-const creditOptions = [
-  { label: '无逾期（全额还款）', value: '无逾期' },
-  { label: '存在逾期记录', value: '有逾期' },
-]
+const currentCategory = computed(() => bigCategories.value.find((c) => c.code === businessType.value))
 
-const rules: FormRules = {
-  enterpriseName: [{ required: true, message: '请输入企业名称', trigger: 'blur' }],
-  businessType: [{ required: true, message: '请选择经营类型', trigger: 'change' }],
-  // 土地经营类
-  landConfirmedArea: [{ required: true, message: '请输入确权耕地总面积', trigger: 'blur' }],
-  landTransferYears: [{ required: true, message: '请输入土地流转合同年限', trigger: 'blur' }],
-  landTransferStability: [{ required: true, message: '请选择土地流转稳定性', trigger: 'change' }],
-  // 农业补贴类
-  grainSubsidy: [{ required: true, message: '请输入耕地地力保护补贴', trigger: 'blur' }],
-  // 农业保险类
-  insuranceYears: [{ required: true, message: '请输入农业保险连续投保年限', trigger: 'blur' }],
-  facilityInsurance: [{ required: true, message: '请选择设施农业附加保险', trigger: 'change' }],
-  // 产销经营类
-  yearsOperating: [{ required: true, message: '请输入主体持续经营年限', trigger: 'blur' }],
-  annualRevenue: [{ required: true, message: '请输入农产品年稳定营收', trigger: 'blur' }],
-  purchaseOrder: [{ required: true, message: '请选择长期收购订单', trigger: 'change' }],
-  creditRecord: [{ required: true, message: '请选择信贷履约记录', trigger: 'change' }],
+const middleList = computed(() => currentCategory.value?.children ?? [])
+
+function smallList(middleCode: string): CategoryNode[] {
+  const m = middleList.value.find((c) => c.code === middleCode)
+  return m?.children ?? []
 }
 
-async function handleSubmit() {
-  if (!formRef.value) return
-  const valid = await formRef.value.validate().catch(() => false)
-  if (!valid) return
+function fieldsOf(code: string): IndicatorField[] {
+  return indicatorMap[code] ?? []
+}
 
+/** 确保 values 中每个已加载字段都有初始值（避免 undefined 警告） */
+function ensureValues(fields: IndicatorField[]) {
+  fields.forEach((f) => {
+    if (!(f.code in values)) values[f.code] = ''
+  })
+}
+
+function bigFields(): IndicatorField[] {
+  return businessType.value && !isMixed.value ? fieldsOf(businessType.value) : []
+}
+
+function isMiddleExpanded(code: string) {
+  return expandedMiddle.value.includes(code)
+}
+function isSmallExpanded(code: string) {
+  return expandedSmall.value.includes(code)
+}
+
+async function init() {
+  loading.value = true
+  try {
+    tree.value = await getIndicatorTree()
+  } catch {
+    ElMessage.error('指标配置加载失败，请确认后端已启动')
+  } finally {
+    loading.value = false
+  }
+}
+
+async function onBusinessTypeChange() {
+  // 清空旧状态
+  expandedMiddle.value = []
+  expandedSmall.value = []
+  Object.keys(indicatorMap).forEach((k) => delete indicatorMap[k])
+  Object.keys(values).forEach((k) => delete values[k])
+  basicFields.value = []
+  if (!businessType.value || isMixed.value) return
+  const cfg = await getIndicatorConfig({ businessType: businessType.value })
+  basicFields.value = cfg.basic
+  indicatorMap[businessType.value] = cfg.indicators.filter((f) => f.level === '大类')
+  ensureValues(cfg.basic)
+  ensureValues(indicatorMap[businessType.value])
+}
+
+async function toggleMiddle(middle: CategoryNode) {
+  const idx = expandedMiddle.value.indexOf(middle.code)
+  if (idx >= 0) {
+    expandedMiddle.value.splice(idx, 1)
+    return
+  }
+  expandedMiddle.value.push(middle.code)
+  if (!indicatorMap[middle.code]) {
+    const cfg = await getIndicatorConfig({ businessType: businessType.value, middleType: middle.code })
+    indicatorMap[middle.code] = cfg.indicators.filter((f) => f.level === '中类')
+    ensureValues(indicatorMap[middle.code])
+  }
+}
+
+async function toggleSmall(small: CategoryNode, middleCode: string) {
+  const idx = expandedSmall.value.indexOf(small.code)
+  if (idx >= 0) {
+    expandedSmall.value.splice(idx, 1)
+    return
+  }
+  expandedSmall.value.push(small.code)
+  if (!indicatorMap[small.code]) {
+    const cfg = await getIndicatorConfig({
+      businessType: businessType.value,
+      middleType: middleCode,
+      smallType: small.code,
+    })
+    indicatorMap[small.code] = cfg.indicators.filter((f) => f.level === '小类')
+    ensureValues(indicatorMap[small.code])
+  }
+}
+
+// ---------- 混合经营比例 ----------
+function onMixedToggle(code: string, checked: boolean) {
+  if (checked) {
+    if (!mixedSelected.value.includes(code)) mixedSelected.value.push(code)
+    if (!mixedRatios[code]) mixedRatios[code] = 50
+  } else {
+    mixedSelected.value = mixedSelected.value.filter((c) => c !== code)
+    delete mixedRatios[code]
+  }
+  normalizeRatios()
+}
+
+function normalizeRatios() {
+  const total = Object.values(mixedRatios).reduce((a, b) => a + b, 0)
+  if (total <= 0) return
+  Object.keys(mixedRatios).forEach((k) => {
+    mixedRatios[k] = Math.round((mixedRatios[k] / total) * 100)
+  })
+}
+
+// ---------- 提交 ----------
+async function handleSubmit() {
+  if (!enterpriseName.value.trim()) {
+    ElMessage.warning('请填写企业名称')
+    return
+  }
+  if (!businessType.value) {
+    ElMessage.warning('请选择经营类型')
+    return
+  }
+  let finalBusinessType = businessType.value
+  const mixed: Record<string, number> = {}
+  if (isMixed.value) {
+    if (mixedSelected.value.length < 2) {
+      ElMessage.warning('混合经营请至少选择 2 种业务类型')
+      return
+    }
+    normalizeRatios()
+    mixedSelected.value.forEach((c) => {
+      mixed[c] = Math.round((mixedRatios[c] / 100) * 100) / 100
+    })
+    finalBusinessType = 'MIXED'
+  }
+  riskStore.setDynamicForm({
+    enterpriseName: enterpriseName.value,
+    businessType: finalBusinessType,
+    productType: productType.value,
+    mixedBusiness: mixed,
+    indicators: { ...values },
+  })
   submitting.value = true
   try {
-    riskStore.setFormData(form)
-    await riskStore.assessRisk()
+    await riskStore.assessDynamic()
     router.push('/result')
   } finally {
     submitting.value = false
@@ -85,295 +185,297 @@ async function handleSubmit() {
 }
 
 function handleReset() {
-  formRef.value?.resetFields()
-  riskStore.resetForm()
+  enterpriseName.value = ''
+  productType.value = ''
+  businessType.value = ''
+  mixedSelected.value = []
+  Object.keys(mixedRatios).forEach((k) => delete mixedRatios[k])
+  Object.keys(values).forEach((k) => delete values[k])
+  Object.keys(indicatorMap).forEach((k) => delete indicatorMap[k])
+  expandedMiddle.value = []
+  expandedSmall.value = []
+  basicFields.value = []
 }
+
+onMounted(init)
 </script>
 
 <template>
-  <div class="page-container">
+  <div class="dynamic-input-page">
     <div class="page-header">
-      <h1>涉农企业数据录入</h1>
-      <p>四大维度 15 项替代数据指标 · 信贷员 3 分钟完成录入 · 系统基于 Logistic 评分卡智能评估</p>
+      <h2>数据录入（动态指标体系）</h2>
+      <p class="sub">选择经营类型，逐级展开填报指标；指标体系共 775 项，未填指标不参与计分（权重自动再分配）</p>
     </div>
 
-    <div class="info-card form-wrapper">
-      <el-form
-        ref="formRef"
-        :model="form"
-        :rules="rules"
-        :label-position="isMobile ? 'top' : 'right'"
-        :label-width="isMobile ? 'auto' : '150px'"
-      >
-        <!-- 基础信息 -->
-        <el-divider content-position="left">
-          <el-icon><OfficeBuilding /></el-icon>
-          <span style="margin-left: 6px">基础信息</span>
-        </el-divider>
-
-        <el-row :gutter="24">
+    <el-card v-loading="loading" shadow="never" class="input-card">
+      <!-- 基本信息 -->
+      <div class="section-title">基本信息</div>
+      <el-form label-width="110px" label-position="left" class="basic-form">
+        <el-row :gutter="20">
           <el-col :xs="24" :md="12">
-            <el-form-item label="企业名称" prop="enterpriseName">
-              <el-input v-model="form.enterpriseName" placeholder="请输入企业名称" maxlength="50" show-word-limit />
+            <el-form-item label="企业名称" required>
+              <el-input v-model="enterpriseName" placeholder="企业/合作社/家庭农场/个体户全称" maxlength="50" />
             </el-form-item>
           </el-col>
-          <el-col :xs="24" :md="12">
-            <el-form-item label="经营类型" prop="businessType">
-              <el-select v-model="form.businessType" placeholder="请选择经营类型" style="width: 100%">
-                <el-option
-                  v-for="item in businessTypeOptions"
-                  :key="item.value"
-                  :label="item.label"
-                  :value="item.value"
-                />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-row :gutter="24">
           <el-col :xs="24" :md="12">
             <el-form-item label="主营产品">
-              <el-input v-model="form.productType" placeholder="如：水稻、玉米、大豆" maxlength="30" />
+              <el-input v-model="productType" placeholder="可选" maxlength="30" />
             </el-form-item>
           </el-col>
-        </el-row>
-
-        <!-- ========== 维度一：土地经营类 ========== -->
-        <el-divider content-position="left">
-          <el-icon><Sunny /></el-icon>
-          <span style="margin-left: 6px">土地经营类（权重 38%，核心资产维度）</span>
-        </el-divider>
-
-        <el-row :gutter="24">
-          <el-col :xs="24" :sm="24" :md="12" :lg="8">
-            <el-form-item label="确权耕地总面积" prop="landConfirmedArea">
-              <div class="unit-input">
-                <el-input-number v-model="form.landConfirmedArea" :min="0" :precision="1" controls-position="right" />
-                <span class="unit-label">亩</span>
-              </div>
-            </el-form-item>
-          </el-col>
-          <el-col :xs="24" :sm="24" :md="12" :lg="8">
-            <el-form-item label="土地流转合同年限" prop="landTransferYears">
-              <div class="unit-input">
-                <el-input-number
-                  v-model="form.landTransferYears"
-                  :min="0"
-                  :max="50"
-                  :precision="0"
-                  controls-position="right"
-                />
-                <span class="unit-label">年</span>
-              </div>
-            </el-form-item>
-          </el-col>
-          <el-col :xs="24" :sm="24" :md="12" :lg="8">
-            <el-form-item label="黑土地保护耕作">
-              <div class="unit-input">
-                <el-input-number v-model="form.blackSoilProtection" :min="0" :precision="1" controls-position="right" />
-                <span class="unit-label">亩</span>
-              </div>
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-row :gutter="24">
           <el-col :xs="24" :md="12">
-            <el-form-item label="土地流转稳定性" prop="landTransferStability">
-              <el-select v-model="form.landTransferStability" placeholder="近 3 年地块变更情况" style="width: 100%">
-                <el-option v-for="item in stabilityOptions" :key="item.value" :label="item.label" :value="item.value" />
+            <el-form-item label="经营类型" required>
+              <el-select v-model="businessType" placeholder="请选择经营类型" style="width: 100%" @change="onBusinessTypeChange">
+                <el-option v-for="c in bigCategories" :key="c.code" :label="c.display" :value="c.code" />
+                <el-option label="混合经营" value="MIXED" />
               </el-select>
             </el-form-item>
           </el-col>
         </el-row>
-
-        <!-- ========== 维度二：农业补贴类 ========== -->
-        <el-divider content-position="left">
-          <el-icon><Money /></el-icon>
-          <span style="margin-left: 6px">农业补贴类（权重 27%，稳定现金流维度）</span>
-        </el-divider>
-
-        <el-row :gutter="24">
-          <el-col :xs="24" :md="12">
-            <el-form-item label="耕地地力保护补贴" prop="grainSubsidy">
-              <div class="unit-input">
-                <el-input-number v-model="form.grainSubsidy" :min="0" :precision="0" controls-position="right" />
-                <span class="unit-label">元</span>
-              </div>
-            </el-form-item>
-          </el-col>
-          <el-col :xs="24" :md="12">
-            <el-form-item label="大型农机购置补贴">
-              <div class="unit-input">
-                <el-input-number v-model="form.machinerySubsidy" :min="0" :precision="0" controls-position="right" />
-                <span class="unit-label">元</span>
-              </div>
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-row :gutter="24">
-          <el-col :xs="24" :md="12">
-            <el-form-item label="粮食规模种植补贴">
-              <div class="unit-input">
-                <el-input-number v-model="form.grainScaleSubsidy" :min="0" :precision="0" controls-position="right" />
-                <span class="unit-label">元</span>
-              </div>
-            </el-form-item>
-          </el-col>
-          <el-col :xs="24" :md="12">
-            <el-form-item label="特色经济作物补贴">
-              <div class="unit-input">
-                <el-input-number
-                  v-model="form.specialtyCropSubsidy"
-                  :min="0"
-                  :precision="0"
-                  controls-position="right"
-                />
-                <span class="unit-label">元</span>
-              </div>
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <!-- ========== 维度三：农业保险类 ========== -->
-        <el-divider content-position="left">
-          <el-icon><Umbrella /></el-icon>
-          <span style="margin-left: 6px">农业保险类（权重 20%，风险抵御维度）</span>
-        </el-divider>
-
-        <el-row :gutter="24">
-          <el-col :xs="24" :sm="24" :md="12" :lg="8">
-            <el-form-item label="连续投保年限" prop="insuranceYears">
-              <div class="unit-input">
-                <el-input-number
-                  v-model="form.insuranceYears"
-                  :min="0"
-                  :max="30"
-                  :precision="0"
-                  controls-position="right"
-                />
-                <span class="unit-label">年</span>
-              </div>
-            </el-form-item>
-          </el-col>
-          <el-col :xs="24" :sm="24" :md="12" :lg="8">
-            <el-form-item label="历史理赔频次">
-              <div class="unit-input">
-                <el-input-number
-                  v-model="form.claimCount"
-                  :min="0"
-                  :max="50"
-                  :precision="0"
-                  controls-position="right"
-                />
-                <span class="unit-label">次</span>
-              </div>
-            </el-form-item>
-          </el-col>
-          <el-col :xs="24" :sm="24" :md="12" :lg="8">
-            <el-form-item label="设施农业附加险" prop="facilityInsurance">
-              <el-select v-model="form.facilityInsurance" placeholder="请选择" style="width: 100%">
-                <el-option v-for="item in facilityOptions" :key="item.value" :label="item.label" :value="item.value" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <!-- ========== 维度四：产销经营类 ========== -->
-        <el-divider content-position="left">
-          <el-icon><DataLine /></el-icon>
-          <span style="margin-left: 6px">产销经营类（权重 15%，长期经营还款意愿维度）</span>
-        </el-divider>
-
-        <el-row :gutter="24">
-          <el-col :xs="24" :sm="24" :md="12" :lg="8">
-            <el-form-item label="持续经营年限" prop="yearsOperating">
-              <div class="unit-input">
-                <el-input-number
-                  v-model="form.yearsOperating"
-                  :min="0"
-                  :max="50"
-                  :precision="0"
-                  controls-position="right"
-                />
-                <span class="unit-label">年</span>
-              </div>
-            </el-form-item>
-          </el-col>
-          <el-col :xs="24" :sm="24" :md="12" :lg="8">
-            <el-form-item label="年稳定营收" prop="annualRevenue">
-              <div class="unit-input">
-                <el-input-number v-model="form.annualRevenue" :min="0" :precision="1" controls-position="right" />
-                <span class="unit-label">万元</span>
-              </div>
-            </el-form-item>
-          </el-col>
-          <el-col :xs="24" :sm="24" :md="12" :lg="8">
-            <el-form-item label="长期收购订单" prop="purchaseOrder">
-              <el-select v-model="form.purchaseOrder" placeholder="请选择" style="width: 100%">
-                <el-option v-for="item in orderOptions" :key="item.value" :label="item.label" :value="item.value" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-row :gutter="24">
-          <el-col :xs="24" :md="12">
-            <el-form-item label="历年信贷履约" prop="creditRecord">
-              <el-select v-model="form.creditRecord" placeholder="请选择" style="width: 100%">
-                <el-option v-for="item in creditOptions" :key="item.value" :label="item.label" :value="item.value" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <!-- 操作按钮 -->
-        <el-divider />
-        <div class="form-actions">
-          <el-button @click="handleReset">重置</el-button>
-          <el-button type="primary" :loading="submitting" @click="handleSubmit">
-            <el-icon><Check /></el-icon>
-            提交评估
-          </el-button>
-        </div>
       </el-form>
-    </div>
+
+      <!-- 混合经营比例 -->
+      <template v-if="isMixed">
+        <div class="section-title">混合经营构成（拖动调整占比）</div>
+        <div class="mixed-box">
+          <el-checkbox-group :model-value="mixedSelected" @update:model-value="normalizeRatios">
+            <el-checkbox
+              v-for="c in bigCategories"
+              :key="c.code"
+              :value="c.code"
+              :label="c.display"
+              @change="(v: boolean | string | number) => onMixedToggle(c.code, Boolean(v))"
+            />
+          </el-checkbox-group>
+          <div
+            v-for="c in bigCategories.filter((x) => mixedSelected.includes(x.code))"
+            :key="c.code"
+            class="ratio-row"
+          >
+            <span class="ratio-name">{{ c.display }}</span>
+            <el-slider v-model="mixedRatios[c.code]" :min="0" :max="100" :step="5" class="ratio-slider" @input="normalizeRatios" />
+            <span class="ratio-val">{{ mixedRatios[c.code] }}%</span>
+          </div>
+          <el-alert
+            v-if="mixedSelected.length && mixedSelected.length < 2"
+            type="warning"
+            :closable="false"
+            show-icon
+            title="混合经营请至少选择 2 种业务类型"
+          />
+        </div>
+        <p class="tip">混合经营按所选业务比例加权评分，后续可叠加协同因子（如种养结合生态循环）。</p>
+      </template>
+
+      <!-- 单经营类型：基本项 + 渐进式类别 -->
+      <template v-if="!isMixed && businessType">
+        <!-- 基本项 -->
+        <div class="section-title">
+          基本项（共 {{ basicFields.length }} 项）
+          <span class="section-sub">所有主体必填的基础信息</span>
+        </div>
+        <el-collapse :model-value="['basic']" class="basic-collapse">
+          <el-collapse-item name="basic" title="展开 / 收起基本项">
+            <el-row :gutter="20">
+              <el-col v-for="f in basicFields" :key="f.code" :xs="24" :md="12" :lg="8">
+                <DynamicField :field="f" v-model="values[f.code]" />
+              </el-col>
+            </el-row>
+          </el-collapse-item>
+        </el-collapse>
+
+        <!-- 大类指标 -->
+        <template v-if="bigFields().length">
+          <div class="section-title">{{ currentCategory?.display }} · 大类指标（{{ bigFields().length }} 项）</div>
+          <el-row :gutter="20">
+            <el-col v-for="f in bigFields()" :key="f.code" :xs="24" :md="12" :lg="8">
+              <DynamicField :field="f" v-model="values[f.code]" />
+            </el-col>
+          </el-row>
+        </template>
+
+        <!-- 中类渐进 -->
+        <div class="section-title">中类（点击展开填报，共 {{ middleList.length }} 个）</div>
+        <div class="level-list">
+          <div v-for="m in middleList" :key="m.code" class="level-item">
+            <div
+              class="level-head"
+              :class="{ active: isMiddleExpanded(m.code) }"
+              @click="toggleMiddle(m)"
+            >
+              <el-icon class="arrow">
+                <ArrowRight v-if="!isMiddleExpanded(m.code)" />
+                <ArrowDown v-else />
+              </el-icon>
+              <span class="level-name">{{ m.display }}</span>
+              <el-tag size="small" type="info" effect="plain">{{ m.indicator_count }} 指标</el-tag>
+            </div>
+            <div v-if="isMiddleExpanded(m.code)" class="level-body">
+              <!-- 中类指标 -->
+              <el-row v-if="fieldsOf(m.code).length" :gutter="20">
+                <el-col v-for="f in fieldsOf(m.code)" :key="f.code" :xs="24" :md="12" :lg="8">
+                  <DynamicField :field="f" v-model="values[f.code]" />
+                </el-col>
+              </el-row>
+              <!-- 小类 -->
+              <div v-if="smallList(m.code).length" class="level-list sub">
+                <div v-for="s in smallList(m.code)" :key="s.code" class="level-item">
+                  <div
+                    class="level-head"
+                    :class="{ active: isSmallExpanded(s.code) }"
+                    @click="toggleSmall(s, m.code)"
+                  >
+                    <el-icon class="arrow">
+                      <ArrowRight v-if="!isSmallExpanded(s.code)" />
+                      <ArrowDown v-else />
+                    </el-icon>
+                    <span class="level-name">{{ s.display }}</span>
+                    <el-tag size="small" type="info" effect="plain">{{ s.indicator_count }} 指标</el-tag>
+                  </div>
+                  <div v-if="isSmallExpanded(s.code)" class="level-body">
+                    <el-row v-if="fieldsOf(s.code).length" :gutter="20">
+                      <el-col v-for="f in fieldsOf(s.code)" :key="f.code" :xs="24" :md="12" :lg="8">
+                        <DynamicField :field="f" v-model="values[f.code]" />
+                      </el-col>
+                    </el-row>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <div v-if="!businessType" class="empty-tip">
+        <el-empty description="请先选择经营类型，系统将动态加载对应指标体系" :image-size="80" />
+      </div>
+
+      <!-- 操作 -->
+      <div class="actions">
+        <el-button :loading="submitting" type="primary" size="large" @click="handleSubmit">提交评估</el-button>
+        <el-button size="large" @click="handleReset">重置</el-button>
+      </div>
+    </el-card>
   </div>
 </template>
 
 <style scoped lang="scss">
-.form-wrapper {
-  max-width: 1020px;
+.dynamic-input-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px;
 }
-
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
+.page-header {
+  margin-bottom: 16px;
+  h2 {
+    margin: 0 0 6px;
+  }
+  .sub {
+    color: #909399;
+    font-size: 13px;
+    margin: 0;
+  }
 }
-
-// 单位输入框：flex 自适应，防止遮挡与错位
-.unit-input {
+.input-card {
+  border-radius: 10px;
+}
+.section-title {
+  font-weight: 600;
+  font-size: 15px;
+  margin: 20px 0 12px;
+  padding-left: 8px;
+  border-left: 3px solid #4c956c;
   display: flex;
   align-items: center;
   gap: 8px;
-  width: 100%;
-  min-width: 0;
-
-  .el-input-number {
-    flex: 1;
-    min-width: 0;
-    width: auto;
+  .section-sub {
+    font-weight: 400;
+    font-size: 12px;
+    color: #909399;
   }
-
-  .unit-label {
-    flex-shrink: 0;
+}
+.basic-collapse {
+  border: none;
+  :deep(.el-collapse-item__header) {
     font-size: 13px;
     color: #606266;
-    white-space: nowrap;
-    line-height: 1;
   }
+}
+.mixed-box {
+  padding: 8px 0;
+  .ratio-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 10px 0;
+    .ratio-name {
+      width: 180px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 13px;
+    }
+    .ratio-slider {
+      flex: 1;
+    }
+    .ratio-val {
+      width: 48px;
+      text-align: right;
+      color: #4c956c;
+      font-weight: 600;
+    }
+  }
+}
+.tip {
+  color: #909399;
+  font-size: 12px;
+  margin: 8px 0 0;
+}
+.level-list {
+  margin: 4px 0;
+  &.sub {
+    margin-left: 24px;
+    border-left: 2px dashed #e4e7ed;
+    padding-left: 12px;
+  }
+}
+.level-item {
+  margin-bottom: 8px;
+}
+.level-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid #e4e7ed;
+  transition: all 0.2s;
+  &:hover {
+    background: #f5f7fa;
+  }
+  &.active {
+    background: #f0f9eb;
+    border-color: #a8dc9f;
+  }
+  .arrow {
+    color: #909399;
+  }
+  .level-name {
+    flex: 1;
+    font-size: 14px;
+  }
+}
+.level-body {
+  padding: 12px 8px 4px 24px;
+}
+.empty-tip {
+  padding: 40px 0;
+}
+.actions {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
+  display: flex;
+  gap: 12px;
 }
 </style>

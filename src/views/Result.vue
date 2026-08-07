@@ -39,7 +39,12 @@ const probabilityPercent = computed(() => (result.value ? (result.value.probabil
 
 // 打印报告
 const printDate = computed(() => new Date().toLocaleString('zh-CN'))
-const reportTitle = computed(() => riskStore.formData.enterpriseName || '涉农经营主体')
+const reportTitle = computed(
+  () =>
+    riskStore.formData.enterpriseName ||
+    riskStore.dynamicForm.enterpriseName ||
+    '涉农经营主体'
+)
 
 function handlePrint() {
   window.print()
