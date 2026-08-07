@@ -89,6 +89,7 @@ export interface CategoryNode {
   level: string
   display: string
   indicator_count: number
+  indicators?: IndicatorField[] // 该节点自身层级的指标字段
   children: CategoryNode[]
 }
 
@@ -102,7 +103,7 @@ export interface IndicatorTree {
 export interface IndicatorConfig {
   basic: IndicatorField[]
   indicators: IndicatorField[]
-  selected: { businessType: string; middleType: string; smallType: string }
+  selected: { businessType: string; middleType: string; smallType: string; specificType?: string }
 }
 
 /** 动态评估请求（POST /risk/assess-dynamic） */
@@ -112,6 +113,8 @@ export interface DynamicRiskInput {
   productType: string
   middleType?: string
   smallType?: string
+  specificType?: string
+  selectedCategories: string[] // el-tree 勾选的具体营业类型叶子编码
   mixedBusiness: Record<string, number> // 混合经营比例 {大类: 0~1}
   indicators: Record<string, string> // 指标编码 -> 值
 }

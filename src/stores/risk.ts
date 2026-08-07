@@ -101,6 +101,7 @@ export const useRiskStore = defineStore('risk', () => {
     enterpriseName: '',
     businessType: '',
     productType: '',
+    selectedCategories: [],
     mixedBusiness: {},
     indicators: {},
   })
@@ -114,6 +115,7 @@ export const useRiskStore = defineStore('risk', () => {
       enterpriseName: '',
       businessType: '',
       productType: '',
+      selectedCategories: [],
       mixedBusiness: {},
       indicators: {},
     }
