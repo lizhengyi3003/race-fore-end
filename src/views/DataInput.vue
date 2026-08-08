@@ -6,6 +6,7 @@ import { useRiskStore } from '@/stores/risk'
 import { getIndicatorTree } from '@/api/indicator'
 import type { CategoryNode, IndicatorField } from '@/api/types'
 import DynamicField from '@/components/DynamicField.vue'
+import { validateIndicatorMap } from '@/utils/validateIndicator'
 
 const router = useRouter()
 const riskStore = useRiskStore()
@@ -147,6 +148,15 @@ async function handleSubmit() {
   }
   if (!checkedLeaves.value.length) {
     ElMessage.warning('请至少勾选 1 个具体营业类型')
+    return
+  }
+  // 校验全部展示指标（基本项 + 勾选路径指标）
+  const allFields: IndicatorField[] = [...basicFields.value]
+  displayGroups.value.forEach((g) => allFields.push(...g.fields))
+  const errors = validateIndicatorMap(allFields, values)
+  if (errors.length) {
+    const shown = errors.slice(0, 5).map((e) => `· ${e}`).join('\n')
+    ElMessage.error(`存在 ${errors.length} 处输入错误，请修正后再提交：\n${shown}${errors.length > 5 ? `\n… 还有 ${errors.length - 5} 处` : ''}`)
     return
   }
   const { businessType, mixedBusiness } = businessInfo.value

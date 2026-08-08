@@ -79,6 +79,8 @@ export interface IndicatorField {
   cycle: string
   scoring_rule: string
   required: boolean
+  min_value?: number | null // 数值型：取值下限（后端解析）
+  max_value?: number | null // 数值型：取值上限（后端解析）
 }
 
 /** 指标类别树节点 */

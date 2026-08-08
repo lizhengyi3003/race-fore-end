@@ -1,22 +1,39 @@
 <script setup lang="ts">
+import { ref, watch } from 'vue'
 import type { PropType } from 'vue'
 import type { IndicatorField } from '@/api/types'
+import { validateIndicatorValue } from '@/utils/validateIndicator'
 
-defineProps({
+const props = defineProps({
   field: { type: Object as PropType<IndicatorField>, required: true },
   modelValue: { type: String, default: '' },
 })
 const emit = defineEmits<{ (e: 'update:modelValue', v: string): void }>()
 
+const errorMsg = ref('')
+
 function setVal(v: string | number | boolean | undefined | null) {
   emit('update:modelValue', v === undefined || v === null ? '' : String(v))
 }
+
+function validate() {
+  errorMsg.value = validateIndicatorValue(props.field, props.modelValue)
+}
+
+// 值被清空（如重置）时同步清除错误
+watch(
+  () => props.modelValue,
+  (nv) => {
+    if ((nv ?? '') === '') errorMsg.value = ''
+  },
+)
 </script>
 
 <template>
   <el-form-item
     :label="field.name"
     :required="field.required && field.indicator_type !== '文本'"
+    :error="errorMsg"
     class="dynamic-field"
   >
     <template #label>
@@ -35,6 +52,7 @@ function setVal(v: string | number | boolean | undefined | null) {
         :placeholder="field.value_range"
         style="width: 100%"
         @update:model-value="setVal"
+        @blur="validate"
       />
       <span v-if="field.unit && field.unit !== '—'" class="unit">{{ field.unit }}</span>
     </div>
@@ -46,12 +64,18 @@ function setVal(v: string | number | boolean | undefined | null) {
       :placeholder="field.value_range"
       style="width: 100%"
       @update:model-value="setVal"
+      @change="validate"
     >
       <el-option v-for="o in field.options" :key="o" :label="o" :value="o" />
     </el-select>
 
     <!-- 布尔 -->
-    <el-radio-group v-else-if="field.indicator_type === '布尔'" :model-value="modelValue" @update:model-value="setVal">
+    <el-radio-group
+      v-else-if="field.indicator_type === '布尔'"
+      :model-value="modelValue"
+      @update:model-value="setVal"
+      @change="validate"
+    >
       <el-radio value="是">是</el-radio>
       <el-radio value="否">否</el-radio>
     </el-radio-group>
@@ -62,6 +86,7 @@ function setVal(v: string | number | boolean | undefined | null) {
       :model-value="modelValue"
       :placeholder="field.value_range"
       @update:model-value="setVal"
+      @blur="validate"
     />
   </el-form-item>
 </template>
