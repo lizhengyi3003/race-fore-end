@@ -2,7 +2,7 @@
 
 > 挑战杯创业计划竞赛（东北振兴产业升级专项赛）· 数智赋能产业组
 > 面向用户的演示前端：数据录入 → 信用评估 → 结果展示，配套数据看板与团队介绍
-> 版本：Demo v1.4
+> 版本：Demo v1.6
 
 ## 技术栈
 
@@ -34,15 +34,15 @@ npm run dev        # http://localhost:5174，/api 代理到 localhost:8000
 | 文件 | 值 | 说明 |
 |---|---|---|
 | `.env.development` | `VITE_API_BASE_URL=/api/v1` | 开发走 Vite 代理（vite.config.ts 代理到 :8000） |
-| `.env.production` | `VITE_API_BASE_URL=https://api.intellicoretech.cn/api/v1` | 生产经 API 网关访问后端 |
+| `.env.production` | （已注释） | 生产**按域名运行时分流**：`src/api/index.ts` 依据 `hostname` 自动选择主站 `/api/v1` 或 dev 预览 `/dev/api/v1`，无需环境变量 |
 
 ## 与后端契约
 
-- 接口封装：`src/api/`（`auth.ts` 登录、`risk.ts` 评估、`types.ts` 类型契约）
-- 15 项指标类型与四大维度分类：`src/api/types.ts`（`RiskInput` / `CATEGORIES`）
+- 接口封装：`src/api/`（`auth.ts` 登录、`risk.ts` 动态评估与历史记录、`indicator.ts` 指标树、`types.ts` 类型契约）
+- 动态指标体系：勾选具体营业类型后由后端 `/indicators/tree` 加载（基本项 + 大类→中类→小类→具体营业类型）
 - 登录态：`src/stores/auth.ts`（token 存 `race_token`，401 自动清理并跳登录）
 - 评估表单状态：`src/stores/risk.ts`
-- 路由守卫：`src/router/index.ts`（`/input` `/result` `/dashboard` 需登录）
+- 路由守卫：`src/router/index.ts`（`/input` `/result` `/dashboard` 需登录；懒加载 chunk 失效自动刷新）
 
 ## 资料文档（docs/）
 
@@ -55,6 +55,7 @@ npm run dev        # http://localhost:5174，/api 代理到 localhost:8000
 | `docs/农业及相关产业动态指标搜集体系.xlsx` | 东北振兴版分层动态指标搜集体系（775 行 × 14 列） |
 | `docs/农业及相关产业动态指标搜集体系.md` | 指标体系文本版（与 xlsx 逐条一致） |
 | `docs/涉农信贷风控模型说明.md` | 模型说明：指标判断、专家引擎、评分卡训练流程、评估指标、双引擎混合决策 |
+| `docs/涉农信贷风控模型全流程说明.md` | 模型全流程说明（版本演进 + 数学公式，供数学组/答辩） |
 
 > 一致性校验：docx ↔ 分类表 md、xlsx ↔ 指标体系 md 已全量核对一致（代码、名称、说明、行业代码、层级归属均无差异）。
 

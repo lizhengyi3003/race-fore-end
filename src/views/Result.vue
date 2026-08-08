@@ -440,7 +440,7 @@ function goBack() {
       <div class="pr-header">
         <h1>涉农小微企业信贷风险评估报告</h1>
         <p class="pr-meta">
-          报告编号：{{ reportNo }} ｜ 评估时间：{{ printDate }} ｜ 系统：涉农信贷风险智能评估系统 Demo v1.5
+          报告编号：{{ reportNo }} ｜ 评估时间：{{ printDate }} ｜ 系统：涉农信贷风险智能评估系统 Demo v1.6
         </p>
       </div>
 
