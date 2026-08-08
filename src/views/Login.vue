@@ -3,10 +3,10 @@ import { ref, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage } from 'element-plus'
-import { Click } from 'go-captcha-vue'
+import { Click, Slide, SlideRegion, Rotate } from 'go-captcha-vue'
 import 'go-captcha-vue/dist/style.css'
 import { useAuthStore } from '@/stores/auth'
-import { getCaptcha, checkCaptcha, type CaptchaData } from '@/api/captcha'
+import { getCaptcha, checkCaptcha, type CaptchaData, type CaptchaType } from '@/api/captcha'
 
 const router = useRouter()
 const route = useRoute()
@@ -25,12 +25,19 @@ const rules: FormRules = {
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
 }
 
-// ---------- 行为验证码（go-captcha）：点击登录后弹出校验 ----------
+// ---------- 行为验证码（go-captcha）：点击登录后弹出校验，四种模式随机 ----------
 const captchaVisible = ref(false)
 const captchaData = ref<CaptchaData | null>(null)
 const captchaLoading = ref(false)
 
-/** 加载/刷新验证码（弹窗打开时调用） */
+const TYPE_TIPS: Record<CaptchaType, string> = {
+  click: '请依次点击下图中的字符',
+  slide: '请拖动滑块完成拼图',
+  drag: '请将拼图拖到正确位置',
+  rotate: '请旋转图片对齐角度',
+}
+
+/** 加载/刷新验证码（弹窗打开或点击组件内置刷新按钮时调用） */
 async function loadCaptcha() {
   captchaLoading.value = true
   try {
@@ -48,11 +55,10 @@ function openCaptcha() {
   loadCaptcha()
 }
 
-/** 点选确认回调：通过则关闭弹窗并执行登录，失败则重置并换一张 */
-function onCaptchaConfirm(dots: Array<{ key: number; index: number; x: number; y: number }>, reset: () => void) {
+/** 统一校验：通过则关闭弹窗执行登录，失败则重置并换一张 */
+function doCheck(value: string, reset: () => void) {
   if (!captchaData.value) return
-  const dotsArr: Array<[number, number]> = dots.map((d) => [d.x, d.y])
-  checkCaptcha(captchaData.value.captchaKey, dotsArr)
+  checkCaptcha(captchaData.value.captchaKey, captchaData.value.type, value)
     .then((res) => {
       if (res.passed) {
         ElMessage.success('验证成功')
@@ -68,6 +74,29 @@ function onCaptchaConfirm(dots: Array<{ key: number; index: number; x: number; y
       reset()
       loadCaptcha()
     })
+}
+
+/** click：点选坐标 */
+function onClickConfirm(dots: Array<{ key: number; index: number; x: number; y: number }>, reset: () => void) {
+  doCheck(dots.map((d) => `${d.x},${d.y}`).join(','), reset)
+}
+
+/** slide / drag：滑块终点坐标 */
+function onSlideConfirm(point: { x: number; y: number }, reset: () => void) {
+  doCheck(`${point.x},${point.y}`, reset)
+}
+
+/** rotate：旋转角度 */
+function onRotateConfirm(angle: number, reset: () => void) {
+  doCheck(String(angle), reset)
+}
+
+/** 组件内置按钮事件：refresh 换一张；close 清除点选（组件内部已清） */
+function captchaEvents() {
+  return {
+    refresh: loadCaptcha,
+    close: () => {},
+  }
 }
 
 /** 真实登录（验证码已通过后调用） */
@@ -149,14 +178,10 @@ function handleKeydown(e: KeyboardEvent) {
       @closed="captchaData = null"
     >
       <div v-loading="captchaLoading" class="captcha-box">
-        <div class="captcha-tip">
-          <span>请依次点击下图中的字符</span>
-          <el-button link type="primary" size="small" @click="loadCaptcha">
-            <el-icon><Refresh /></el-icon>&nbsp;换一张
-          </el-button>
-        </div>
+        <div v-if="captchaData" class="captcha-tip">{{ TYPE_TIPS[captchaData.type] }}</div>
+        <!-- 四种交互模式随机：click 点选 / slide 滑块 / drag 拖拽 / rotate 旋转 -->
         <Click
-          v-if="captchaData"
+          v-if="captchaData?.type === 'click'"
           :data="{ image: captchaData.image, thumb: captchaData.thumb }"
           :config="{
             width: captchaData.width,
@@ -166,7 +191,61 @@ function handleKeydown(e: KeyboardEvent) {
             title: '请依次点击',
             buttonText: '确 认',
           }"
-          :events="{ confirm: onCaptchaConfirm }"
+          :events="{ ...captchaEvents(), confirm: onClickConfirm }"
+        />
+        <Slide
+          v-else-if="captchaData?.type === 'slide'"
+          :data="{
+            thumbX: captchaData.displayX,
+            thumbY: captchaData.displayY,
+            thumbWidth: captchaData.thumbWidth,
+            thumbHeight: captchaData.thumbHeight,
+            image: captchaData.image,
+            thumb: captchaData.thumb,
+          }"
+          :config="{
+            width: captchaData.width,
+            height: captchaData.height,
+            thumbWidth: captchaData.thumbWidth,
+            thumbHeight: captchaData.thumbHeight,
+            title: '请拖动滑块',
+          }"
+          :events="{ ...captchaEvents(), confirm: onSlideConfirm }"
+        />
+        <SlideRegion
+          v-else-if="captchaData?.type === 'drag'"
+          :data="{
+            thumbX: captchaData.displayX,
+            thumbY: captchaData.displayY,
+            thumbWidth: captchaData.thumbWidth,
+            thumbHeight: captchaData.thumbHeight,
+            image: captchaData.image,
+            thumb: captchaData.thumb,
+          }"
+          :config="{
+            width: captchaData.width,
+            height: captchaData.height,
+            thumbWidth: captchaData.thumbWidth,
+            thumbHeight: captchaData.thumbHeight,
+            title: '请拖到正确位置',
+          }"
+          :events="{ ...captchaEvents(), confirm: onSlideConfirm }"
+        />
+        <Rotate
+          v-else-if="captchaData?.type === 'rotate'"
+          :data="{
+            image: captchaData.image,
+            thumb: captchaData.thumb,
+            thumbSize: captchaData.thumbSize,
+          }"
+          :config="{
+            width: captchaData.width,
+            height: captchaData.height,
+            thumbWidth: captchaData.thumbWidth,
+            thumbHeight: captchaData.thumbHeight,
+            title: '请旋转对齐',
+          }"
+          :events="{ ...captchaEvents(), confirm: onRotateConfirm }"
         />
       </div>
     </el-dialog>
@@ -240,12 +319,16 @@ function handleKeydown(e: KeyboardEvent) {
 .captcha-box {
   width: 100%;
   min-height: 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center; // 验证码组件在弹窗中左右居中
 
   .captcha-tip {
+    width: 100%;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    margin-bottom: 8px;
+    justify-content: center;
+    margin-bottom: 10px;
     font-size: 13px;
     color: #606266;
   }
