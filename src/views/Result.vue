@@ -385,7 +385,7 @@ function goBack() {
             size="small"
             stripe
             empty-text="暂无历史评估记录"
-            style="min-width: 660px"
+            style="min-width: 690px"
           >
             <el-table-column prop="enterpriseName" label="企业名称" min-width="150" show-overflow-tooltip />
             <el-table-column label="评分" width="72" align="center">
@@ -398,7 +398,7 @@ function goBack() {
                 </span>
               </template>
             </el-table-column>
-            <el-table-column label="风险等级" width="118" align="center">
+            <el-table-column label="风险等级" width="140" align="center">
               <template #default="{ row }">
                 <RiskBadge :level="row.level" />
               </template>

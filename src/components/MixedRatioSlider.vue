@@ -3,7 +3,13 @@ import { computed, ref, watch } from 'vue'
 
 /**
  * 混合经营占比选择器：勾选几个大类就显示几个滑杆，总和恒为 100%。
- * 拖动任一滑杆，其余滑杆按原比例联动缩放，保证合计 100%。
+ *
+ * 调整规则（顺序补偿）：拖动第 i 个滑杆时，其余项按「从第 1 个开始」的固定顺序依次补偿，
+ * 只改动最先命中的优先对象，不会所有项一起动：
+ * - 当前项增大 → 按顺序（跳过自身）把其他项依次减到 0 来补足差值
+ * - 当前项减小 → 按顺序（跳过自身）把其他项依次加到 100 来补足差值
+ * 例：增大第 1 个 → 优先减第 2 个；第 2 个到 0 再减第 3 个。
+ *     增大第 3 个 → 优先减第 1 个，其次第 2 个（跳过自身）。
  * emits: update:ratios -> { 大类码: 0~1 }
  */
 const props = defineProps<{
@@ -35,34 +41,58 @@ function fillEven(codes: string[]): Record<string, number> {
   return r
 }
 
-/** 按比例缩放并整数化，总和恒为 100 */
-function scaleTo(codes: string[], next: Record<string, number>, fixed: string): Record<string, number> {
-  const others = codes.filter((c) => c !== fixed)
-  const rest = 100 - next[fixed]
-  const othersTotal = others.reduce((s, c) => s + (next[c] || 0), 0)
-  if (othersTotal <= 0) {
-    others.forEach((c, idx) => {
-      next[c] =
-        idx === others.length - 1
-          ? rest - others.slice(0, -1).reduce((s, o) => s + (next[o] || 0), 0)
-          : rest / Math.max(others.length, 1)
-    })
-  } else {
-    others.forEach((c) => {
-      next[c] = ((next[c] || 0) / othersTotal) * rest
-    })
-  }
-  // 整数化（最后一项补差）
-  const rounded: Record<string, number> = {}
-  let acc = 0
-  codes.forEach((c, idx) => {
-    if (idx === codes.length - 1) rounded[c] = 100 - acc
-    else {
-      rounded[c] = Math.round(next[c])
-      acc += rounded[c]
+/**
+ * 顺序补偿：调整 items[idx] 后，其余项按「第 1 个优先」的固定顺序依次增减，保证总和 100。
+ * 每次拖动只会移动「当前项 + 优先补偿对象」，其余项保持不变。
+ */
+function compensate(codes: string[], next: Record<string, number>, idx: number) {
+  const cur = Math.max(0, Math.min(100, next[codes[idx]]))
+  next[codes[idx]] = cur
+  // diff = 当前总和 - 100：>0 表示超了需减小其他项；<0 表示不足需增大其他项
+  let diff = codes.reduce((s, c) => s + (next[c] || 0), 0) - 100
+  if (diff === 0) return
+  const order = codes.filter((_, i) => i !== idx) // 固定顺序（第 1 个优先），跳过自身
+  let remaining = Math.abs(diff)
+  if (diff > 0) {
+    // 当前项增大（总和超 100）：按顺序把其他项依次减到 0
+    for (const c of order) {
+      if (remaining <= 0) break
+      const take = Math.min(remaining, next[c] || 0)
+      next[c] = (next[c] || 0) - take
+      remaining -= take
     }
-  })
-  return rounded
+    if (remaining > 0) next[codes[idx]] = cur - remaining
+  } else {
+    // 当前项减小（总和不足 100）：按顺序把其他项依次加到 100
+    for (const c of order) {
+      if (remaining <= 0) break
+      const give = Math.min(remaining, 100 - (next[c] || 0))
+      next[c] = (next[c] || 0) + give
+      remaining -= give
+    }
+    if (remaining > 0) next[codes[idx]] = cur + remaining
+  }
+}
+
+/** 归一化（大类集合变化时）：保留已有占比，差值按「第 1 个优先」顺序补/减，总和恒为 100 */
+function normalize(codes: string[], r: Record<string, number>) {
+  let diff = 100 - codes.reduce((s, c) => s + (r[c] || 0), 0)
+  if (diff === 0) return
+  if (diff > 0) {
+    for (const c of codes) {
+      if (diff <= 0) break
+      const give = Math.min(diff, 100 - (r[c] || 0))
+      r[c] = (r[c] || 0) + give
+      diff -= give
+    }
+  } else {
+    for (const c of codes) {
+      if (diff >= 0) break
+      const take = Math.min(-diff, r[c] || 0)
+      r[c] = (r[c] || 0) - take
+      diff += take
+    }
+  }
 }
 
 /** 大类集合变化：保留已有占比，新增/移除后归一化 */
@@ -83,22 +113,23 @@ watch(
     if (total <= 0) {
       ratios.value = fillEven(codes)
     } else {
-      ratios.value = scaleTo(codes, kept, codes[0])
+      normalize(codes, kept)
+      ratios.value = kept
     }
     emit('update:ratios', to01(ratios.value))
   },
   { immediate: true }
 )
 
-/** 拖动滑杆：固定当前值，其余按比例联动 */
+/** 拖动滑杆：顺序补偿（只动当前项 + 优先补偿对象） */
 function onRatio(code: string, val: number) {
   const n = Math.max(0, Math.min(100, val))
+  const codes = props.items.map((i) => i.code)
+  const idx = codes.indexOf(code)
+  if (idx < 0) return
   const next: Record<string, number> = { ...ratios.value, [code]: n }
-  ratios.value = scaleTo(
-    props.items.map((i) => i.code),
-    next,
-    code
-  )
+  compensate(codes, next, idx)
+  ratios.value = next
   emit('update:ratios', to01(ratios.value))
 }
 
