@@ -21,8 +21,8 @@ export const useAuthStore = defineStore('auth', () => {
   const isLoggedIn = computed(() => !!token.value)
   const displayName = computed(() => user.value?.real_name || user.value?.username || '')
 
-  async function login(username: string, password: string) {
-    const res = await apiLogin(username, password)
+  async function login(username: string, password: string, captchaKey = '') {
+    const res = await apiLogin(username, password, captchaKey)
     token.value = res.token
     user.value = res.user
     localStorage.setItem(TOKEN_KEY, res.token)

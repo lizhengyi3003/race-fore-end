@@ -17,9 +17,9 @@ export interface LoginResult {
   user: LoginUser
 }
 
-/** 登录（邀约制：账号由管理端后台开通，无注册入口） */
-export async function login(username: string, password: string): Promise<LoginResult> {
-  const res = await http.post<LoginResult>('/auth/login', { username, password })
+/** 登录（邀约制：账号由管理端后台开通，无注册入口；captchaKey 为已完成的行为验证码） */
+export async function login(username: string, password: string, captchaKey = ''): Promise<LoginResult> {
+  const res = await http.post<LoginResult>('/auth/login', { username, password, captchaKey })
   return res.data
 }
 

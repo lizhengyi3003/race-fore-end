@@ -3,7 +3,10 @@ import { ref, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage } from 'element-plus'
+import { Click } from 'go-captcha-vue'
+import 'go-captcha-vue/dist/style.css'
 import { useAuthStore } from '@/stores/auth'
+import { getCaptcha, checkCaptcha, type CaptchaData } from '@/api/captcha'
 
 const router = useRouter()
 const route = useRoute()
@@ -22,22 +25,74 @@ const rules: FormRules = {
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
 }
 
-async function handleLogin() {
-  if (!formRef.value) return
-  const valid = await formRef.value.validate().catch(() => false)
-  if (!valid) return
+// ---------- 行为验证码（go-captcha）：点击登录后弹出校验 ----------
+const captchaVisible = ref(false)
+const captchaData = ref<CaptchaData | null>(null)
+const captchaLoading = ref(false)
 
+/** 加载/刷新验证码（弹窗打开时调用） */
+async function loadCaptcha() {
+  captchaLoading.value = true
+  try {
+    captchaData.value = await getCaptcha()
+  } catch {
+    captchaData.value = null
+  } finally {
+    captchaLoading.value = false
+  }
+}
+
+/** 打开验证码弹窗并加载验证码 */
+function openCaptcha() {
+  captchaVisible.value = true
+  loadCaptcha()
+}
+
+/** 点选确认回调：通过则关闭弹窗并执行登录，失败则重置并换一张 */
+function onCaptchaConfirm(dots: Array<{ key: number; index: number; x: number; y: number }>, reset: () => void) {
+  if (!captchaData.value) return
+  const dotsArr: Array<[number, number]> = dots.map((d) => [d.x, d.y])
+  checkCaptcha(captchaData.value.captchaKey, dotsArr)
+    .then((res) => {
+      if (res.passed) {
+        ElMessage.success('验证成功')
+        captchaVisible.value = false
+        doLogin()
+      } else {
+        ElMessage.warning('验证失败，请重试')
+        reset()
+        loadCaptcha()
+      }
+    })
+    .catch(() => {
+      reset()
+      loadCaptcha()
+    })
+}
+
+/** 真实登录（验证码已通过后调用） */
+async function doLogin() {
+  if (!captchaData.value) return
   loading.value = true
   try {
-    await authStore.login(form.username, form.password)
+    await authStore.login(form.username, form.password, captchaData.value.captchaKey)
     ElMessage.success('登录成功')
     const redirect = (route.query.redirect as string) || '/home'
     router.replace(redirect)
   } catch {
-    // 错误提示由 http 拦截器统一处理
+    // 登录失败：重新弹出验证码（换一张，防止同一验证码重复试探）
+    captchaVisible.value = true
+    loadCaptcha()
   } finally {
     loading.value = false
   }
+}
+
+async function handleLogin() {
+  if (!formRef.value) return
+  const valid = await formRef.value.validate().catch(() => false)
+  if (!valid) return
+  openCaptcha()
 }
 
 function handleKeydown(e: KeyboardEvent) {
@@ -81,6 +136,40 @@ function handleKeydown(e: KeyboardEvent) {
     </div>
 
     <div class="login-footer">© 2026 涉农信贷风控系统 · "挑战杯"创业计划竞赛 · 东北乡村振兴</div>
+
+    <!-- 行为验证码弹窗：点击登录后弹出，校验通过才继续登录 -->
+    <el-dialog
+      v-model="captchaVisible"
+      title="安全验证"
+      width="400px"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
+      align-center
+      append-to-body
+      @closed="captchaData = null"
+    >
+      <div v-loading="captchaLoading" class="captcha-box">
+        <div class="captcha-tip">
+          <span>请依次点击下图中的字符</span>
+          <el-button link type="primary" size="small" @click="loadCaptcha">
+            <el-icon><Refresh /></el-icon>&nbsp;换一张
+          </el-button>
+        </div>
+        <Click
+          v-if="captchaData"
+          :data="{ image: captchaData.image, thumb: captchaData.thumb }"
+          :config="{
+            width: captchaData.width,
+            height: captchaData.height,
+            thumbWidth: captchaData.thumbWidth,
+            thumbHeight: captchaData.thumbHeight,
+            title: '请依次点击',
+            buttonText: '确 认',
+          }"
+          :events="{ confirm: onCaptchaConfirm }"
+        />
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -143,5 +232,22 @@ function handleKeydown(e: KeyboardEvent) {
   text-align: center;
   color: rgba(255, 255, 255, 0.6);
   font-size: 12px;
+}
+</style>
+
+<!-- 验证码弹窗内容被 el-dialog teleport 到 body，需全局样式 -->
+<style lang="scss">
+.captcha-box {
+  width: 100%;
+  min-height: 60px;
+
+  .captcha-tip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: #606266;
+  }
 }
 </style>
