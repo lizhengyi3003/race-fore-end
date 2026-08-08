@@ -29,10 +29,7 @@ export function validateIndicatorValue(field: IndicatorField, value: string | un
 }
 
 /** 校验一组指标，返回错误信息列表（仅含非空错误） */
-export function validateIndicatorMap(
-  fields: IndicatorField[],
-  values: Record<string, string | undefined>
-): string[] {
+export function validateIndicatorMap(fields: IndicatorField[], values: Record<string, string | undefined>): string[] {
   const errors: string[] = []
   for (const f of fields) {
     const err = validateIndicatorValue(f, values[f.code])

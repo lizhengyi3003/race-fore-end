@@ -1,11 +1,5 @@
 import http from './index'
-import type {
-  AssessmentRecordDetail,
-  AssessmentRecordItem,
-  DynamicRiskInput,
-  PageData,
-  RiskResult,
-} from './types'
+import type { AssessmentRecordDetail, AssessmentRecordItem, DynamicRiskInput, PageData, RiskResult } from './types'
 
 /**
  * 动态指标体系评估（专家引擎）：POST /api/v1/risk/assess-dynamic

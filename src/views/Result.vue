@@ -139,12 +139,7 @@ const probabilityPercent = computed(() => (result.value ? (result.value.probabil
 
 // 打印报告
 const printDate = computed(() => new Date().toLocaleString('zh-CN'))
-const reportTitle = computed(
-  () =>
-    currentHistoryName.value ||
-    riskStore.dynamicForm.enterpriseName ||
-    '涉农经营主体'
-)
+const reportTitle = computed(() => currentHistoryName.value || riskStore.dynamicForm.enterpriseName || '涉农经营主体')
 
 // 报告编号（按时间生成）
 const reportNo = computed(() => {
@@ -440,7 +435,7 @@ function goBack() {
       <div class="pr-header">
         <h1>涉农小微企业信贷风险评估报告</h1>
         <p class="pr-meta">
-          报告编号：{{ reportNo }} ｜ 评估时间：{{ printDate }} ｜ 系统：涉农信贷风险智能评估系统 Demo v1.6
+          报告编号：{{ reportNo }} ｜ 评估时间：{{ printDate }} ｜ 系统：涉农信贷风险智能评估系统 Demo v1.7
         </p>
       </div>
 

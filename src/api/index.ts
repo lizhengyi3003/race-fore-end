@@ -6,13 +6,10 @@ import { ElMessage } from 'element-plus'
 //   *.workers.dev 预览（dev 分支）→ dev 后端 /dev/api/v1
 //   自定义域名 intellicoretech.cn（main 生产）→ main 后端 /api/v1
 //   VITE_API_BASE_URL 显式配置时优先（如本地开发 /api/v1）
-const isWorkersPreview =
-  typeof window !== 'undefined' && window.location.hostname.endsWith('.workers.dev')
+const isWorkersPreview = typeof window !== 'undefined' && window.location.hostname.endsWith('.workers.dev')
 const baseURL =
   import.meta.env.VITE_API_BASE_URL ||
-  (isWorkersPreview
-    ? 'https://api.intellicoretech.cn/dev/api/v1'
-    : 'https://api.intellicoretech.cn/api/v1')
+  (isWorkersPreview ? 'https://api.intellicoretech.cn/dev/api/v1' : 'https://api.intellicoretech.cn/api/v1')
 
 const http: AxiosInstance = axios.create({
   baseURL,
