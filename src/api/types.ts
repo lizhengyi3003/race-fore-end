@@ -107,6 +107,15 @@ export interface IndicatorConfig {
   selected: { businessType: string; middleType: string; smallType: string; specificType?: string }
 }
 
+/** 评估原始表单快照项（本次评估提交时的指标填写值） */
+export interface FormSnapshotItem {
+  code: string
+  name: string
+  level: string
+  unit: string
+  value: string
+}
+
 /** 分页响应（后端 PageData） */
 export interface PageData<T> {
   total: number

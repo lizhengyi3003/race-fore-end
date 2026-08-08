@@ -25,7 +25,7 @@ watch(
   () => props.modelValue,
   (nv) => {
     if ((nv ?? '') === '') errorMsg.value = ''
-  },
+  }
 )
 </script>
 
@@ -48,6 +48,8 @@ watch(
     <div v-if="field.indicator_type === '数值'" class="unit-wrap">
       <el-input-number
         :model-value="modelValue === '' ? undefined : Number(modelValue)"
+        :min="field.min_value ?? 0"
+        :max="field.max_value ?? undefined"
         :controls="false"
         :placeholder="field.value_range"
         style="width: 100%"

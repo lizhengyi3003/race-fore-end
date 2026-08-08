@@ -7,7 +7,7 @@ import * as echarts from 'echarts'
 import ScoreGauge from '@/components/ScoreGauge.vue'
 import RiskBadge from '@/components/RiskBadge.vue'
 import { deleteRiskRecord, getRiskRecord, getRiskRecords } from '@/api/risk'
-import type { AssessmentRecordItem } from '@/api/types'
+import type { AssessmentRecordDetail, AssessmentRecordItem } from '@/api/types'
 
 const router = useRouter()
 const riskStore = useRiskStore()
@@ -45,6 +45,22 @@ const historyLoading = ref(false)
 // 当前正在查看的历史记录（用于标题展示与删除联动）
 const viewingHistoryId = ref(0)
 const currentHistoryName = ref('')
+// 当前历史详情（含原始指标明细，供「查看原始表单」）
+const currentHistoryDetail = ref<AssessmentRecordDetail | null>(null)
+
+// ---------- 原始表单查看 ----------
+const formDrawerVisible = ref(false)
+const formRows = ref<{ name: string; level: string; unit: string; value: string }[]>([])
+
+function showForm() {
+  if (viewingHistoryId.value && currentHistoryDetail.value) {
+    const iv = currentHistoryDetail.value.indicatorValues || []
+    formRows.value = iv.map((r) => ({ name: r.name, level: r.level, unit: r.unit, value: r.value ?? '' }))
+  } else {
+    formRows.value = riskStore.formSnapshot.map((s) => ({ name: s.name, level: s.level, unit: s.unit, value: s.value }))
+  }
+  formDrawerVisible.value = true
+}
 
 async function loadHistory(page = 1) {
   historyLoading.value = true
@@ -78,6 +94,7 @@ async function viewHistory(recordId: number) {
     riskStore.setResult(detail.result)
     currentHistoryName.value = detail.enterpriseName || ''
     viewingHistoryId.value = recordId
+    currentHistoryDetail.value = detail
     await nextTick()
     initBarChart()
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -103,6 +120,7 @@ async function removeHistory(row: AssessmentRecordItem) {
       riskStore.setResult(null)
       currentHistoryName.value = ''
       viewingHistoryId.value = 0
+      currentHistoryDetail.value = null
     }
     if (historyRecords.value.length === 1 && historyPage.value > 1) {
       loadHistory(historyPage.value - 1)
@@ -127,6 +145,38 @@ const reportTitle = computed(
     riskStore.formData.enterpriseName ||
     riskStore.dynamicForm.enterpriseName ||
     '涉农经营主体'
+)
+
+// 报告编号（按时间生成）
+const reportNo = computed(() => {
+  const d = new Date()
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `RACE-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`
+})
+
+// 经营类型显示名（大类码 → 名称）
+const BIG_TYPE_NAMES: Record<string, string> = {
+  '01': '农林牧渔业',
+  '02': '食用加工与制造',
+  '03': '非食用加工与制造',
+  '04': '生产资料制造和农田水利设施建设',
+  '05': '流通服务',
+  '06': '科研和技术服务',
+  '07': '教育培训与人力资源服务',
+  '08': '生态保护和环境治理',
+  '09': '休闲观光与农业农村管理服务',
+  '10': '其他支持服务',
+}
+const businessTypeText = computed(() => {
+  const bt = riskStore.dynamicForm.businessType || riskStore.formData.businessType || ''
+  if (!bt) return '—'
+  if (bt === 'MIXED') return '混合经营'
+  return BIG_TYPE_NAMES[bt] || bt
+})
+
+const sortedContribs = computed(() => [...(result.value?.contributions || [])].sort((a, b) => b.score - a.score))
+const completenessText = computed(() =>
+  result.value?.completeness != null ? `${(result.value.completeness * 100).toFixed(0)}%` : '—'
 )
 
 function handlePrint() {
@@ -196,188 +246,282 @@ function goBack() {
 </script>
 
 <template>
-  <div class="page-container">
-    <template v-if="result">
-      <div class="page-header">
-        <h1>风险评估结果</h1>
-        <p>基于多元统计模型的综合信贷风险分析报告</p>
+  <div class="result-page">
+    <div class="page-container">
+      <template v-if="result">
+        <div class="page-header">
+          <h1>风险评估结果</h1>
+          <p>基于多元统计模型的综合信贷风险分析报告</p>
+        </div>
+
+        <!-- 打印报告页眉（仅打印时显示） -->
+        <div class="print-header">
+          <h2>涉农小微企业信贷风险评估报告</h2>
+          <p>
+            企业名称：{{ reportTitle }} ｜ 生成时间：{{ printDate }} ｜ 系统：涉农信贷风险智能评估系统（Logistic
+            评分卡）
+          </p>
+        </div>
+
+        <!-- 核心指标卡片 -->
+        <el-row :gutter="20" class="result-cards">
+          <!-- 信用评分仪表盘 -->
+          <el-col :xs="24" :md="8">
+            <div class="info-card gauge-card">
+              <h3 class="card-title">信用评分（0-1000）</h3>
+              <ScoreGauge :score="result.score" :size="320" :max="1000" />
+            </div>
+          </el-col>
+
+          <!-- 风险等级 & 违约概率 -->
+          <el-col :xs="24" :md="8">
+            <div class="info-card risk-card">
+              <h3 class="card-title">风险等级</h3>
+              <div class="risk-level-display">
+                <RiskBadge :level="result.level" />
+                <p class="risk-desc">
+                  {{
+                    result.level === '低风险'
+                      ? '企业经营稳健，违约风险较低'
+                      : result.level === '中等风险'
+                        ? '需关注部分指标，审慎授信'
+                        : '存在较高风险，建议暂缓放贷'
+                  }}
+                </p>
+              </div>
+
+              <el-divider />
+
+              <div class="prob-section">
+                <span class="prob-label">违约概率</span>
+                <div class="prob-bar-wrapper">
+                  <el-progress
+                    :percentage="parseFloat(probabilityPercent)"
+                    :color="result.probability > 0.3 ? '#f56c6c' : result.probability > 0.15 ? '#e6a23c' : '#67c23a'"
+                    :stroke-width="14"
+                  >
+                    <span class="prob-text">{{ probabilityPercent }}%</span>
+                  </el-progress>
+                </div>
+              </div>
+            </div>
+          </el-col>
+
+          <!-- 授信建议 -->
+          <el-col :xs="24" :md="8">
+            <div class="info-card advice-card">
+              <h3 class="card-title">授信建议</h3>
+              <div class="advice-item">
+                <span class="advice-label">建议额度</span>
+                <span class="advice-value highlight">{{ result.suggestedAmount }} <small>万元</small></span>
+              </div>
+              <div class="advice-item">
+                <span class="advice-label">建议利率</span>
+                <span class="advice-value">{{ result.suggestedRate }}<small>%</small></span>
+              </div>
+              <el-divider />
+              <p class="advice-text">{{ result.advice }}</p>
+            </div>
+          </el-col>
+        </el-row>
+
+        <!-- 前三项扣分原因 -->
+        <div class="info-card deduction-card">
+          <h3 class="card-title">
+            <el-icon style="vertical-align: middle; margin-right: 6px" color="#e6a23c"><WarningFilled /></el-icon>
+            前三项扣分原因（人工复核提示）
+          </h3>
+          <el-row :gutter="16">
+            <el-col v-for="(ded, idx) in result.deductions" :key="ded.factor" :xs="24" :sm="12" :md="8">
+              <div class="deduction-item">
+                <div class="deduction-rank">NO.{{ idx + 1 }}</div>
+                <div class="deduction-body">
+                  <div class="deduction-factor">{{ ded.factor }}</div>
+                  <el-progress
+                    :percentage="ded.score"
+                    :stroke-width="10"
+                    :color="ded.score >= 60 ? '#e6a23c' : '#f56c6c'"
+                    :show-text="false"
+                    style="margin: 8px 0"
+                  />
+                  <p class="deduction-reason">{{ ded.reason }}</p>
+                </div>
+              </div>
+            </el-col>
+          </el-row>
+        </div>
+
+        <!-- 因子贡献图 -->
+        <div class="info-card chart-card">
+          <h3 class="card-title">各指标得分贡献</h3>
+          <div class="contribution-scroll">
+            <div ref="barChartRef" class="contribution-chart" :style="{ minWidth: contributionMinWidth + 'px' }" />
+          </div>
+          <p class="scroll-hint">← 左右滑动查看全部指标 →</p>
+        </div>
+
+        <!-- 操作按钮 -->
+        <div class="action-bar">
+          <el-button @click="goBack">
+            <el-icon><Back /></el-icon>
+            重新评估
+          </el-button>
+          <el-button @click="showForm">
+            <el-icon><Document /></el-icon>
+            查看原始表单
+          </el-button>
+          <el-button type="primary" @click="handlePrint">
+            <el-icon><Printer /></el-icon>
+            打印报告
+          </el-button>
+        </div>
+      </template>
+
+      <!-- 无数据占位 -->
+      <div v-if="!result" class="no-result-wrap">
+        <el-empty description="暂无评估结果，请先录入数据">
+          <el-button type="primary" @click="router.push('/input')">前往录入</el-button>
+        </el-empty>
       </div>
 
-    <!-- 打印报告页眉（仅打印时显示） -->
-    <div class="print-header">
-      <h2>涉农小微企业信贷风险评估报告</h2>
-      <p>
-        企业名称：{{ reportTitle }} ｜ 生成时间：{{ printDate }} ｜ 系统：涉农信贷风险智能评估系统（Logistic 评分卡）
-      </p>
-    </div>
-
-    <!-- 核心指标卡片 -->
-    <el-row :gutter="20" class="result-cards">
-      <!-- 信用评分仪表盘 -->
-      <el-col :xs="24" :md="8">
-        <div class="info-card gauge-card">
-          <h3 class="card-title">信用评分（0-1000）</h3>
-          <ScoreGauge :score="result.score" :size="320" :max="1000" />
-        </div>
-      </el-col>
-
-      <!-- 风险等级 & 违约概率 -->
-      <el-col :xs="24" :md="8">
-        <div class="info-card risk-card">
-          <h3 class="card-title">风险等级</h3>
-          <div class="risk-level-display">
-            <RiskBadge :level="result.level" />
-            <p class="risk-desc">
-              {{
-                result.level === '低风险'
-                  ? '企业经营稳健，违约风险较低'
-                  : result.level === '中等风险'
-                    ? '需关注部分指标，审慎授信'
-                    : '存在较高风险，建议暂缓放贷'
-              }}
-            </p>
-          </div>
-
-          <el-divider />
-
-          <div class="prob-section">
-            <span class="prob-label">违约概率</span>
-            <div class="prob-bar-wrapper">
-              <el-progress
-                :percentage="parseFloat(probabilityPercent)"
-                :color="result.probability > 0.3 ? '#f56c6c' : result.probability > 0.15 ? '#e6a23c' : '#67c23a'"
-                :stroke-width="14"
+      <!-- 历史评估记录（当前账号） -->
+      <div class="info-card history-card">
+        <h3 class="card-title">
+          <el-icon style="vertical-align: middle; margin-right: 6px" color="#2c6e49"><Clock /></el-icon>
+          历史评估记录
+          <el-tag size="small" type="info" effect="plain" style="margin-left: 8px"
+            >当前账号 · {{ historyTotal }} 条</el-tag
+          >
+        </h3>
+        <el-table v-loading="historyLoading" :data="historyRecords" size="small" stripe empty-text="暂无历史评估记录">
+          <el-table-column prop="enterpriseName" label="企业名称" min-width="160" show-overflow-tooltip />
+          <el-table-column label="评分" width="76" align="center">
+            <template #default="{ row }">
+              <span
+                class="history-score"
+                :style="{ color: row.score >= 700 ? '#67c23a' : row.score >= 500 ? '#e6a23c' : '#f56c6c' }"
               >
-                <span class="prob-text">{{ probabilityPercent }}%</span>
-              </el-progress>
-            </div>
-          </div>
+                {{ row.score }}
+              </span>
+            </template>
+          </el-table-column>
+          <el-table-column label="风险等级" width="104" align="center">
+            <template #default="{ row }">
+              <RiskBadge :level="row.level" />
+            </template>
+          </el-table-column>
+          <el-table-column label="评估时间" width="150">
+            <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
+          </el-table-column>
+          <el-table-column label="操作" width="120" align="center">
+            <template #default="{ row }">
+              <el-button link type="primary" @click="viewHistory(row.id)">查看</el-button>
+              <el-button link type="danger" @click="removeHistory(row)">删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <div v-if="historyTotal > historySize" class="history-pager">
+          <el-pagination
+            layout="prev, pager, next"
+            :total="historyTotal"
+            :page-size="historySize"
+            :current-page="historyPage"
+            background
+            size="small"
+            @current-change="loadHistory"
+          />
         </div>
-      </el-col>
-
-      <!-- 授信建议 -->
-      <el-col :xs="24" :md="8">
-        <div class="info-card advice-card">
-          <h3 class="card-title">授信建议</h3>
-          <div class="advice-item">
-            <span class="advice-label">建议额度</span>
-            <span class="advice-value highlight">{{ result.suggestedAmount }} <small>万元</small></span>
-          </div>
-          <div class="advice-item">
-            <span class="advice-label">建议利率</span>
-            <span class="advice-value">{{ result.suggestedRate }}<small>%</small></span>
-          </div>
-          <el-divider />
-          <p class="advice-text">{{ result.advice }}</p>
-        </div>
-      </el-col>
-    </el-row>
-
-    <!-- 前三项扣分原因 -->
-    <div class="info-card deduction-card">
-      <h3 class="card-title">
-        <el-icon style="vertical-align: middle; margin-right: 6px" color="#e6a23c"><WarningFilled /></el-icon>
-        前三项扣分原因（人工复核提示）
-      </h3>
-      <el-row :gutter="16">
-        <el-col v-for="(ded, idx) in result.deductions" :key="ded.factor" :xs="24" :sm="12" :md="8">
-          <div class="deduction-item">
-            <div class="deduction-rank">NO.{{ idx + 1 }}</div>
-            <div class="deduction-body">
-              <div class="deduction-factor">{{ ded.factor }}</div>
-              <el-progress
-                :percentage="ded.score"
-                :stroke-width="10"
-                :color="ded.score >= 60 ? '#e6a23c' : '#f56c6c'"
-                :show-text="false"
-                style="margin: 8px 0"
-              />
-              <p class="deduction-reason">{{ ded.reason }}</p>
-            </div>
-          </div>
-        </el-col>
-      </el-row>
-    </div>
-
-    <!-- 因子贡献图 -->
-    <div class="info-card chart-card">
-      <h3 class="card-title">各指标得分贡献</h3>
-      <div class="contribution-scroll">
-        <div ref="barChartRef" class="contribution-chart" :style="{ minWidth: contributionMinWidth + 'px' }" />
       </div>
-      <p class="scroll-hint">← 左右滑动查看全部指标 →</p>
     </div>
 
-    <!-- 操作按钮 -->
-    <div class="action-bar">
-      <el-button @click="goBack">
-        <el-icon><Back /></el-icon>
-        重新评估
-      </el-button>
-      <el-button type="primary" @click="handlePrint">
-        <el-icon><Printer /></el-icon>
-        打印报告
-      </el-button>
-    </div>
-    </template>
-
-    <!-- 无数据占位 -->
-    <div v-if="!result" class="no-result-wrap">
-      <el-empty description="暂无评估结果，请先录入数据">
-        <el-button type="primary" @click="router.push('/input')">前往录入</el-button>
-      </el-empty>
-    </div>
-
-    <!-- 历史评估记录（当前账号） -->
-    <div class="info-card history-card">
-      <h3 class="card-title">
-        <el-icon style="vertical-align: middle; margin-right: 6px" color="#2c6e49"><Clock /></el-icon>
-        历史评估记录
-        <el-tag size="small" type="info" effect="plain" style="margin-left: 8px">当前账号 · {{ historyTotal }} 条</el-tag>
-      </h3>
-      <el-table
-        v-loading="historyLoading"
-        :data="historyRecords"
-        size="small"
-        stripe
-        empty-text="暂无历史评估记录"
-      >
-        <el-table-column prop="enterpriseName" label="企业名称" min-width="160" show-overflow-tooltip />
-        <el-table-column label="评分" width="76" align="center">
-          <template #default="{ row }">
-            <span
-              class="history-score"
-              :style="{ color: row.score >= 700 ? '#67c23a' : row.score >= 500 ? '#e6a23c' : '#f56c6c' }"
-            >
-              {{ row.score }}
-            </span>
-          </template>
-        </el-table-column>
-        <el-table-column label="风险等级" width="104" align="center">
-          <template #default="{ row }">
-            <RiskBadge :level="row.level" />
-          </template>
-        </el-table-column>
-        <el-table-column label="评估时间" width="150">
-          <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
-        </el-table-column>
-        <el-table-column label="操作" width="120" align="center">
-          <template #default="{ row }">
-            <el-button link type="primary" @click="viewHistory(row.id)">查看</el-button>
-            <el-button link type="danger" @click="removeHistory(row)">删除</el-button>
-          </template>
-        </el-table-column>
+    <!-- 原始表单抽屉 -->
+    <el-drawer v-model="formDrawerVisible" title="评估原始表单" size="min(640px, 92%)">
+      <el-table v-if="formRows.length" :data="formRows" size="small" border stripe>
+        <el-table-column prop="level" label="层级" width="120" />
+        <el-table-column prop="name" label="指标名称" min-width="200" />
+        <el-table-column prop="unit" label="单位" width="80" />
+        <el-table-column prop="value" label="填写值" min-width="120" />
       </el-table>
-      <div v-if="historyTotal > historySize" class="history-pager">
-        <el-pagination
-          layout="prev, pager, next"
-          :total="historyTotal"
-          :page-size="historySize"
-          :current-page="historyPage"
-          background
-          size="small"
-          @current-change="loadHistory"
-        />
+      <el-empty v-else description="该评估没有已填写的指标数据（可能为 15 项传统评估或未填指标）" :image-size="80" />
+    </el-drawer>
+
+    <!-- 正式打印报告（仅打印时显示） -->
+    <div v-if="result" class="print-report">
+      <div class="pr-header">
+        <h1>涉农小微企业信贷风险评估报告</h1>
+        <p class="pr-meta">
+          报告编号：{{ reportNo }} ｜ 评估时间：{{ printDate }} ｜ 系统：涉农信贷风险智能评估系统 Demo v1.5
+        </p>
+      </div>
+
+      <div class="pr-basic">
+        <table>
+          <tbody>
+            <tr>
+              <th>企业名称</th>
+              <td>{{ reportTitle }}</td>
+              <th>经营类型</th>
+              <td>{{ businessTypeText }}</td>
+            </tr>
+            <tr>
+              <th>综合信用评分</th>
+              <td>{{ result.score }} 分（0-1000）</td>
+              <th>风险等级</th>
+              <td>{{ result.level }}</td>
+            </tr>
+            <tr>
+              <th>违约概率</th>
+              <td>{{ probabilityPercent }}%</td>
+              <th>数据完整度</th>
+              <td>{{ completenessText }}</td>
+            </tr>
+            <tr>
+              <th>建议授信额度</th>
+              <td>{{ result.suggestedAmount }} 万元</td>
+              <th>建议利率</th>
+              <td>{{ result.suggestedRate }}%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2>一、授信建议</h2>
+      <p class="pr-advice">{{ result.advice }}</p>
+
+      <h2>二、主要指标得分表现</h2>
+      <table class="pr-table">
+        <thead>
+          <tr>
+            <th>序号</th>
+            <th>指标</th>
+            <th>所属层级</th>
+            <th>得分（0-100）</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(c, i) in sortedContribs" :key="i">
+            <td class="pr-c">{{ i + 1 }}</td>
+            <td>{{ c.factor }}</td>
+            <td class="pr-c">{{ c.category }}</td>
+            <td class="pr-c">{{ c.score.toFixed(1) }}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>三、扣分原因（人工复核提示）</h2>
+      <ol class="pr-deductions">
+        <li v-for="d in result.deductions" :key="d.factor">{{ d.factor }}：{{ d.reason }}</li>
+      </ol>
+
+      <div class="pr-footer">
+        <p>
+          本报告由涉农信贷风险智能评估系统基于替代数据指标体系与专家引擎自动生成，仅供信贷审批参考，不构成授信承诺。
+        </p>
+        <div class="pr-sign">
+          <span>信贷员签字：______________</span>
+          <span>复核人签字：______________</span>
+          <span>日期：____________________</span>
+        </div>
       </div>
     </div>
   </div>
@@ -581,7 +725,7 @@ function goBack() {
 }
 
 /* ---------- 打印报告样式 ---------- */
-.print-header {
+.print-report {
   display: none;
 }
 
@@ -598,37 +742,116 @@ function goBack() {
     overflow: visible !important;
   }
 
-  .action-bar {
+  // 打印只输出正式报告，隐藏页面本体（含历史评估记录、操作栏）
+  .page-container,
+  .no-result-wrap,
+  .history-card {
     display: none !important;
   }
 
-  .page-header {
-    display: none;
-  }
-
-  .print-header {
+  .print-report {
     display: block;
-    margin-bottom: 18px;
-    padding-bottom: 12px;
-    border-bottom: 3px solid #2c6e49;
+    font-family: 'Microsoft YaHei', 'PingFang SC', 'SimSun', sans-serif;
+    color: #000;
+    font-size: 13px;
+    line-height: 1.8;
+
+    .pr-header {
+      text-align: center;
+      border-bottom: 3px double #333;
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+
+      h1 {
+        font-size: 24px;
+        letter-spacing: 4px;
+        margin: 0 0 8px;
+        color: #000;
+      }
+
+      .pr-meta {
+        font-size: 11px;
+        color: #333;
+        margin: 0;
+      }
+    }
+
+    .pr-basic {
+      margin-bottom: 16px;
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        border: 1px solid #999;
+        padding: 7px 10px;
+        font-size: 13px;
+      }
+
+      th {
+        width: 92px;
+        text-align: center;
+        background: #f2f2f2;
+        font-weight: 600;
+      }
+    }
 
     h2 {
-      margin: 0 0 8px;
-      font-size: 20px;
-      color: #2c6e49;
+      font-size: 15px;
+      margin: 16px 0 8px;
+      padding-left: 8px;
+      border-left: 4px solid #2c6e49;
     }
 
-    p {
-      margin: 0;
+    .pr-advice {
+      padding: 8px 12px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    .pr-table {
+      width: 100%;
+      border-collapse: collapse;
       font-size: 12px;
-      color: #606266;
-    }
-  }
 
-  .info-card {
-    box-shadow: none !important;
-    break-inside: avoid;
-    page-break-inside: avoid;
+      th,
+      td {
+        border: 1px solid #999;
+        padding: 5px 8px;
+        text-align: left;
+      }
+
+      th {
+        background: #f2f2f2;
+      }
+
+      .pr-c {
+        text-align: center;
+      }
+    }
+
+    .pr-deductions {
+      margin: 0;
+      padding-left: 24px;
+    }
+
+    .pr-footer {
+      margin-top: 26px;
+      font-size: 11px;
+      color: #333;
+
+      p {
+        margin: 0 0 22px;
+      }
+
+      .pr-sign {
+        display: flex;
+        justify-content: space-between;
+      }
+    }
   }
 }
 </style>

@@ -6,6 +6,7 @@ import { useRiskStore } from '@/stores/risk'
 import { getIndicatorTree } from '@/api/indicator'
 import type { CategoryNode, IndicatorField } from '@/api/types'
 import DynamicField from '@/components/DynamicField.vue'
+import MixedRatioSlider from '@/components/MixedRatioSlider.vue'
 import { validateIndicatorMap } from '@/utils/validateIndicator'
 
 const router = useRouter()
@@ -71,25 +72,31 @@ const totalDisplayFields = computed(() => displayGroups.value.reduce((a, g) => a
 const expandedGroupNames = computed(() => displayGroups.value.map((_, i) => `${i}`))
 
 // ---------- 经营类型推导（单大类 / 混合）----------
-const businessInfo = computed(() => {
-  const leaves = checkedLeaves.value
-  if (!leaves.length) return { businessType: '', mixedBusiness: {} as Record<string, number> }
-  const bigCount: Record<string, number> = {}
-  leaves.forEach((c) => {
+// 勾选叶子去重后的大类列表（含名称，供混合占比滑杆使用）
+const bigCategoryList = computed(() => {
+  const bigs: { code: string; label: string }[] = []
+  const seen = new Set<string>()
+  checkedLeaves.value.forEach((c) => {
     const big = c.split('_')[0].slice(0, 2)
-    bigCount[big] = (bigCount[big] ?? 0) + 1
+    if (seen.has(big)) return
+    seen.add(big)
+    const node = treeData.value.find((d) => d.code === big)
+    bigs.push({ code: big, label: node?.display || big })
   })
-  const bigs = Object.keys(bigCount)
-  if (bigs.length === 1) return { businessType: bigs[0], mixedBusiness: {} }
-  const total = leaves.length
-  const mixed: Record<string, number> = {}
-  bigs.forEach((b) => {
-    mixed[b] = Math.round((bigCount[b] / total) * 100) / 100
-  })
-  return { businessType: 'MIXED', mixedBusiness: mixed }
+  return bigs
 })
 
-const isMixed = computed(() => businessInfo.value.businessType === 'MIXED')
+const isMixed = computed(() => bigCategoryList.value.length > 1)
+
+// 混合经营占比（0~1），由 MixedRatioSlider 多滑杆维护，默认均分
+const mixedRatios = ref<Record<string, number>>({})
+
+const businessInfo = computed(() => {
+  const bigs = bigCategoryList.value
+  if (!bigs.length) return { businessType: '', mixedBusiness: {} as Record<string, number> }
+  if (bigs.length === 1) return { businessType: bigs[0].code, mixedBusiness: {} }
+  return { businessType: 'MIXED', mixedBusiness: { ...mixedRatios.value } }
+})
 
 // ---------- 树勾选事件（仅叶子「具体营业类型」可勾选）----------
 function isLeaf(data: CategoryNode): boolean {
@@ -119,7 +126,7 @@ function onTreeCheck() {
   displayGroups.value.forEach((g) =>
     g.fields.forEach((f) => {
       if (!(f.code in values)) values[f.code] = ''
-    }),
+    })
   )
 }
 
@@ -155,10 +162,21 @@ async function handleSubmit() {
   displayGroups.value.forEach((g) => allFields.push(...g.fields))
   const errors = validateIndicatorMap(allFields, values)
   if (errors.length) {
-    const shown = errors.slice(0, 5).map((e) => `· ${e}`).join('\n')
-    ElMessage.error(`存在 ${errors.length} 处输入错误，请修正后再提交：\n${shown}${errors.length > 5 ? `\n… 还有 ${errors.length - 5} 处` : ''}`)
+    const shown = errors
+      .slice(0, 5)
+      .map((e) => `· ${e}`)
+      .join('\n')
+    ElMessage.error(
+      `存在 ${errors.length} 处输入错误，请修正后再提交：\n${shown}${errors.length > 5 ? `\n… 还有 ${errors.length - 5} 处` : ''}`
+    )
     return
   }
+  // 保存原始表单快照（结果页「查看原始表单」用）
+  riskStore.setFormSnapshot(
+    allFields
+      .map((f) => ({ code: f.code, name: f.name, level: f.level, unit: f.unit, value: values[f.code] ?? '' }))
+      .filter((s) => s.value !== '')
+  )
   const { businessType, mixedBusiness } = businessInfo.value
   riskStore.setDynamicForm({
     enterpriseName: enterpriseName.value,
@@ -179,6 +197,7 @@ async function handleSubmit() {
 function handleReset() {
   enterpriseName.value = ''
   checkedLeaves.value = []
+  mixedRatios.value = {}
   treeRef.value?.setCheckedKeys([])
   Object.keys(values).forEach((k) => delete values[k])
   basicFields.value.forEach((f) => {
@@ -193,7 +212,9 @@ onMounted(init)
   <div class="dynamic-input-page">
     <div class="page-header">
       <h2>数据录入（动态指标体系）</h2>
-      <p class="sub">勾选实际经营的「具体营业类型」（可多选，支持搜索），系统自动加载对应指标体系；未填指标不参与计分</p>
+      <p class="sub">
+        勾选实际经营的「具体营业类型」（可多选，支持搜索），系统自动加载对应指标体系；未填指标不参与计分
+      </p>
     </div>
 
     <el-card v-loading="loading" shadow="never" class="input-card">
@@ -249,15 +270,13 @@ onMounted(init)
             </template>
           </el-tree>
         </div>
-        <el-alert
-          v-if="isMixed"
-          type="info"
-          :closable="false"
-          show-icon
-          class="mixed-tip"
-          title="已勾选多个大类，按混合经营加权评分"
-          :description="Object.entries(businessInfo.mixedBusiness).map(([c, r]) => `${c} ${Math.round(r * 100)}%`).join(' · ')"
-        />
+        <div v-if="isMixed" class="mixed-wrap">
+          <div class="mixed-title">
+            <el-icon><Connection /></el-icon>
+            混合经营占比（勾选 {{ bigCategoryList.length }} 个大类）
+          </div>
+          <MixedRatioSlider v-model:ratios="mixedRatios" :items="bigCategoryList" />
+        </div>
       </div>
 
       <!-- 基本项（所有主体必填，可先填写） -->
@@ -399,8 +418,22 @@ onMounted(init)
       }
     }
   }
-  .mixed-tip {
-    margin-top: 12px;
+  .mixed-wrap {
+    margin-top: 14px;
+    padding: 12px 14px;
+    border: 1px solid #dcdfe6;
+    border-radius: 8px;
+    background: #fafafa;
+
+    .mixed-title {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #2c6e49;
+      margin-bottom: 10px;
+    }
   }
 }
 .group-collapse {

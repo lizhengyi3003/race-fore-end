@@ -16,8 +16,10 @@ export function validateIndicatorValue(field: IndicatorField, value: string | un
     if (v.trim() === '' || Number.isNaN(n)) {
       return `「${field.name}」需为有效数字`
     }
-    if (field.min_value != null && n < field.min_value) {
-      return `「${field.name}」不能小于 ${field.min_value}${field.unit || ''}`
+    // 数值指标默认非负（面积/金额/年限/次数等），有明确下限时用下限
+    const min = field.min_value ?? 0
+    if (n < min) {
+      return `「${field.name}」不能小于 ${min}${field.unit || ''}`
     }
     if (field.max_value != null && n > field.max_value) {
       return `「${field.name}」不能大于 ${field.max_value}${field.unit || ''}`

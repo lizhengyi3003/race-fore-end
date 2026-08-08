@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { DynamicRiskInput, RiskInput, RiskResult } from '@/api/types'
+import type { DynamicRiskInput, FormSnapshotItem, RiskInput, RiskResult } from '@/api/types'
 import { submitDynamicRiskAssessment, submitRiskAssessment } from '@/api/risk'
 
 export const useRiskStore = defineStore('risk', () => {
@@ -134,6 +134,12 @@ export const useRiskStore = defineStore('risk', () => {
     riskResult.value = result
   }
 
+  // 本次评估提交时的原始表单快照（供结果页查看）
+  const formSnapshot = ref<FormSnapshotItem[]>([])
+  function setFormSnapshot(items: FormSnapshotItem[]) {
+    formSnapshot.value = items
+  }
+
   return {
     formData,
     riskResult,
@@ -149,5 +155,7 @@ export const useRiskStore = defineStore('risk', () => {
     resetDynamicForm,
     assessDynamic,
     setResult,
+    formSnapshot,
+    setFormSnapshot,
   }
 })
