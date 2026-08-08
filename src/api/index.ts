@@ -39,13 +39,19 @@ http.interceptors.response.use(
   (response) => {
     const { code, message } = response.data
     if (code !== undefined && code !== 200) {
-      // 401：登录失效，清理凭证并跳转登录页（排除登录接口自身失败的情况）
+      // 401：登录失效，清理凭证并提示后 3 秒跳转登录页（登录接口自身失败不延迟跳转）
       if (code === 401) {
         localStorage.removeItem('race_token')
         localStorage.removeItem('race_user')
         if (!window.location.hash.includes('/login')) {
-          window.location.hash = '#/login'
+          ElMessage.warning('登录已过期，请重新登录')
+          setTimeout(() => {
+            window.location.hash = '#/login'
+          }, 3000)
+        } else {
+          ElMessage.error(message || '登录失败')
         }
+        return Promise.reject(new Error(message))
       }
       ElMessage.error(message || '请求失败')
       return Promise.reject(new Error(message))
@@ -53,7 +59,17 @@ http.interceptors.response.use(
     return response.data
   },
   (error: AxiosError) => {
-    ElMessage.error(error.message || '网络错误')
+    // HTTP 层 401（兜底）：清理凭证并提示后 3 秒跳转登录页
+    if (error.response?.status === 401 && !window.location.hash.includes('/login')) {
+      localStorage.removeItem('race_token')
+      localStorage.removeItem('race_user')
+      ElMessage.warning('登录已过期，请重新登录')
+      setTimeout(() => {
+        window.location.hash = '#/login'
+      }, 3000)
+    } else {
+      ElMessage.error(error.message || '网络错误')
+    }
     return Promise.reject(error)
   }
 )
