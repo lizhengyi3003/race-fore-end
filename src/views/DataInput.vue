@@ -73,30 +73,28 @@ const displayGroups = computed(() => {
 const totalDisplayFields = computed(() => displayGroups.value.reduce((a, g) => a + g.fields.length, 0))
 const expandedGroupNames = computed(() => displayGroups.value.map((_, i) => `${i}`))
 
-// ---------- 经营类型推导（单大类 / 混合）----------
-// 勾选叶子去重后的大类列表（含名称，供混合占比滑杆使用）
-const bigCategoryList = computed(() => {
-  const bigs: { code: string; label: string }[] = []
-  const seen = new Set<string>()
-  checkedLeaves.value.forEach((c) => {
-    const big = c.split('_')[0].slice(0, 2)
-    if (seen.has(big)) return
-    seen.add(big)
-    const node = treeData.value.find((d) => d.code === big)
-    bigs.push({ code: big, label: node?.display || big })
+// ---------- 具体营业类型（国标 4+4 位叶子）列表：勾选后按叶子分配权重 ----------
+const leafList = computed(() =>
+  checkedLeaves.value.map((c) => {
+    const node = treeRef.value?.getNode(c)
+    const d = node?.data as CategoryNode | undefined
+    return { code: c, label: d?.name || d?.display || c }
   })
-  return bigs
-})
+)
 
-const isMixed = computed(() => bigCategoryList.value.length > 1)
+// 勾选多个具体营业类型（含同一大类内多个）即按叶子分配占比
+const isMixed = computed(() => leafList.value.length > 1)
 
-// 混合经营占比（0~1），由 MixedRatioSlider 多滑杆维护，默认均分
 const mixedRatios = ref<Record<string, number>>({})
 
 const businessInfo = computed(() => {
-  const bigs = bigCategoryList.value
-  if (!bigs.length) return { businessType: '', mixedBusiness: {} as Record<string, number> }
-  if (bigs.length === 1) return { businessType: bigs[0].code, mixedBusiness: {} }
+  const leaves = leafList.value
+  if (!leaves.length) return { businessType: '', mixedBusiness: {} as Record<string, number> }
+  if (leaves.length === 1) {
+    // 单叶子：按所属大类评估（占比 100% 无需分配）
+    return { businessType: leaves[0].code.split('_')[0].slice(0, 2), mixedBusiness: {} }
+  }
+  // 多叶子（含同大类多叶子）：混合经营，按具体营业类型分配权重
   return { businessType: 'MIXED', mixedBusiness: { ...mixedRatios.value } }
 })
 
@@ -290,9 +288,9 @@ onMounted(init)
         <div v-if="isMixed" class="mixed-wrap">
           <div class="mixed-title">
             <el-icon><Connection /></el-icon>
-            混合经营占比（勾选 {{ bigCategoryList.length }} 个大类）
+            混合经营占比（勾选 {{ leafList.length }} 个具体营业类型）
           </div>
-          <MixedRatioSlider v-model:ratios="mixedRatios" :items="bigCategoryList" />
+          <MixedRatioSlider v-model:ratios="mixedRatios" :items="leafList" />
         </div>
       </div>
 

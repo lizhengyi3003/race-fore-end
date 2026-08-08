@@ -29,6 +29,8 @@ const rules: FormRules = {
 const captchaVisible = ref(false)
 const captchaData = ref<CaptchaData | null>(null)
 const captchaLoading = ref(false)
+// 验证码加载失败标志：避免弹窗空白卡住，显示错误 + 重试
+const captchaError = ref(false)
 // 已通过验证的 captchaKey 与登录提交状态（防止重复触发登录 / @closed 清空竞态）
 const pendingCaptchaKey = ref('')
 const loginSubmitting = ref(false)
@@ -44,10 +46,13 @@ const TYPE_TIPS: Record<CaptchaType, string> = {
 async function loadCaptcha() {
   if (loginSubmitting.value) return
   captchaLoading.value = true
+  captchaError.value = false
   try {
     captchaData.value = await getCaptcha()
   } catch {
+    // 验证码服务不可用/网络异常：显示错误与重试，避免弹窗空白卡校验
     captchaData.value = null
+    captchaError.value = true
   } finally {
     captchaLoading.value = false
   }
@@ -83,6 +88,8 @@ function doCheck(value: string, reset: () => void) {
       }
     })
     .catch(() => {
+      // 校验请求网络异常：重置并换一张，避免反复卡在同一张图
+      ElMessage.error('验证服务异常，已为你换一张，请重试')
       reset()
       loadCaptcha()
     })
@@ -200,6 +207,12 @@ function handleKeydown(e: KeyboardEvent) {
     >
       <div v-loading="captchaLoading" class="captcha-box">
         <div v-if="captchaData" class="captcha-tip">{{ TYPE_TIPS[captchaData.type] }}</div>
+        <!-- 验证码加载失败：显示错误 + 重试，避免弹窗空白卡校验 -->
+        <div v-else-if="captchaError" class="captcha-error">
+          <el-icon :size="28" color="#e6a23c"><WarningFilled /></el-icon>
+          <p>验证码加载失败，请检查网络后重试</p>
+          <el-button type="primary" size="small" @click="loadCaptcha">重新加载</el-button>
+        </div>
         <!-- 四种交互模式随机：click 点选 / slide 滑块 / drag 拖拽 / rotate 旋转 -->
         <Click
           v-if="captchaData?.type === 'click'"
@@ -352,6 +365,20 @@ function handleKeydown(e: KeyboardEvent) {
     margin-bottom: 10px;
     font-size: 13px;
     color: #606266;
+  }
+
+  .captcha-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 20px 0;
+
+    p {
+      margin: 0;
+      font-size: 13px;
+      color: #909399;
+    }
   }
 }
 </style>
