@@ -17,7 +17,6 @@ const basicFields = ref<IndicatorField[]>([])
 
 // ---------- 基本信息 ----------
 const enterpriseName = ref('')
-const productType = ref('')
 
 // ---------- el-tree 搜索过滤 ----------
 const filterText = ref('')
@@ -28,10 +27,6 @@ const checkedLeaves = ref<string[]>([])
 
 // ---------- 动态指标值 ----------
 const values = reactive<Record<string, string>>({})
-
-const bigCodes = computed(() => treeData.value.map((c) => c.code))
-// 默认展开大类（第一级）
-const expandedKeys = computed(() => bigCodes.value)
 
 const basicCodeSet = computed(() => new Set(basicFields.value.map((f) => f.code)))
 
@@ -95,7 +90,21 @@ const businessInfo = computed(() => {
 
 const isMixed = computed(() => businessInfo.value.businessType === 'MIXED')
 
-// ---------- 树勾选事件 ----------
+// ---------- 树勾选事件（仅叶子「具体营业类型」可勾选）----------
+function isLeaf(data: CategoryNode): boolean {
+  return !data.children || data.children.length === 0
+}
+
+function onLeafToggle(node: any, val: boolean) {
+  // 只允许勾选叶子（具体营业类型）；非叶子无复选框，此处为保险拦截
+  if (!isLeaf(node.data as CategoryNode)) {
+    ElMessage.warning('请勾选最后一级「具体营业类型」')
+    return
+  }
+  treeRef.value?.setChecked(node.data.code, val)
+  onTreeCheck()
+}
+
 function onTreeCheck() {
   const keys = (treeRef.value?.getCheckedKeys(true) ?? []) as string[]
   checkedLeaves.value = keys.filter((k) => String(k).includes('_'))
@@ -144,7 +153,6 @@ async function handleSubmit() {
   riskStore.setDynamicForm({
     enterpriseName: enterpriseName.value,
     businessType,
-    productType: productType.value,
     selectedCategories: [...checkedLeaves.value],
     mixedBusiness,
     indicators: { ...values },
@@ -160,7 +168,6 @@ async function handleSubmit() {
 
 function handleReset() {
   enterpriseName.value = ''
-  productType.value = ''
   checkedLeaves.value = []
   treeRef.value?.setCheckedKeys([])
   Object.keys(values).forEach((k) => delete values[k])
@@ -184,14 +191,9 @@ onMounted(init)
       <div class="section-title">基本信息</div>
       <el-form label-width="110px" label-position="left" class="basic-form">
         <el-row :gutter="20">
-          <el-col :xs="24" :md="12">
+          <el-col :xs="24" :md="24">
             <el-form-item label="企业名称" required>
               <el-input v-model="enterpriseName" placeholder="企业/合作社/家庭农场/个体户全称" maxlength="50" />
-            </el-form-item>
-          </el-col>
-          <el-col :xs="24" :md="12">
-            <el-form-item label="主营产品">
-              <el-input v-model="productType" placeholder="可选" maxlength="30" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -216,12 +218,26 @@ onMounted(init)
             ref="treeRef"
             :data="treeData"
             node-key="code"
-            show-checkbox
             :props="{ label: 'display', children: 'children' }"
             :filter-node-method="filterNode"
-            :default-expanded-keys="expandedKeys"
             @check="onTreeCheck"
-          />
+          >
+            <template #default="{ node, data }">
+              <div class="custom-tree-node">
+                <el-checkbox
+                  v-if="isLeaf(data)"
+                  :model-value="node.checked"
+                  class="leaf-checkbox"
+                  @click.stop
+                  @change="(val: boolean | string | number) => onLeafToggle(node, !!val)"
+                />
+                <span class="node-label" :class="{ 'is-leaf': isLeaf(data) }">{{ data.display }}</span>
+                <span v-if="!isLeaf(data) && data.indicator_count" class="node-count">
+                  {{ data.indicator_count }} 项指标
+                </span>
+              </div>
+            </template>
+          </el-tree>
         </div>
         <el-alert
           v-if="isMixed"
@@ -244,7 +260,7 @@ onMounted(init)
           <el-collapse-item name="basic" title="展开 / 收起基本项">
             <el-row :gutter="20">
               <el-col v-for="f in basicFields" :key="f.code" :xs="24" :md="12" :lg="8">
-                <DynamicField :field="f" v-model="values[f.code]" />
+                <DynamicField v-model="values[f.code]" :field="f" />
               </el-col>
             </el-row>
           </el-collapse-item>
@@ -266,7 +282,7 @@ onMounted(init)
           >
             <el-row :gutter="20">
               <el-col v-for="f in g.fields" :key="f.code" :xs="24" :md="12" :lg="8">
-                <DynamicField :field="f" v-model="values[f.code]" />
+                <DynamicField v-model="values[f.code]" :field="f" />
               </el-col>
             </el-row>
           </el-collapse-item>
@@ -339,8 +355,38 @@ onMounted(init)
     border-radius: 8px;
     padding: 8px 12px;
     :deep(.el-tree-node__content) {
-      height: 30px;
+      height: 32px;
       font-size: 13px;
+    }
+    .custom-tree-node {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+      min-width: 0;
+
+      .leaf-checkbox {
+        margin-right: 2px;
+      }
+
+      .node-label {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: #303133;
+
+        &.is-leaf {
+          color: #2c6e49;
+        }
+      }
+
+      .node-count {
+        margin-left: auto;
+        padding-right: 8px;
+        font-size: 11px;
+        color: #c0c4cc;
+        flex-shrink: 0;
+      }
     }
   }
   .mixed-tip {

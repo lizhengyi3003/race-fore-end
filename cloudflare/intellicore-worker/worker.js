@@ -1,7 +1,10 @@
 // intellicore-worker · API 网关（Cloudflare Worker）
 //
-// 职责：把 api.intellicoretech.cn 的所有请求代理到后端
-//   https://backend.intellicoretech.cn（Cloudflare Tunnel → 8.156.70.151:8000）
+// 职责：把 api.intellicoretech.cn 的请求代理到后端，按路径前缀分流：
+//   /dev/* 前缀 → dev 后端（剥离 /dev 后转发，如 /dev/admin → /admin）
+//                  https://backend-dev.intellicoretech.cn（Tunnel → 8.156.70.151:8081）
+//   其余        → main 后端（原样转发）
+//                  https://backend.intellicoretech.cn（Tunnel → 8.156.70.151:8000）
 //
 // 说明：race-fore-end 前端仅使用 /api/v1/* 接口，无需 /chat 的 Workers AI 功能，
 //       因此本网关统一代理到后端；如需恢复 AI 聊天，请在此基础上补充 Workers AI 绑定。
@@ -10,6 +13,8 @@
 //       （含 *.workers.dev 预览部署域名）。竞赛演示项目放宽跨域，生产建议收敛为白名单。
 const ALLOWED_METHODS = 'GET,POST,PUT,DELETE,PATCH,OPTIONS'
 const ALLOWED_HEADERS = 'Content-Type,Authorization,X-Requested-With,Accept,Origin'
+const MAIN_BACKEND = 'https://backend.intellicoretech.cn'
+const DEV_BACKEND = 'https://backend-dev.intellicoretech.cn'
 
 function corsHeaders(origin) {
   return {
@@ -36,7 +41,14 @@ export default {
       })
     }
 
-    const targetUrl = 'https://backend.intellicoretech.cn' + url.pathname + url.search
+    // 路径分流：/dev 前缀 → dev 后端（剥离 /dev）；其余 → main 后端
+    let targetBase = MAIN_BACKEND
+    let path = url.pathname
+    if (path === '/dev' || path.startsWith('/dev/')) {
+      targetBase = DEV_BACKEND
+      path = path === '/dev' ? '/' : path.slice(4)
+    }
+    const targetUrl = targetBase + path + url.search
 
     const headers = new Headers(request.headers)
     headers.delete('host')

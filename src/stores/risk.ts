@@ -8,7 +8,6 @@ export const useRiskStore = defineStore('risk', () => {
   const formData = ref<RiskInput>({
     enterpriseName: '',
     businessType: '',
-    productType: '',
     // 土地经营类
     landConfirmedArea: undefined,
     landTransferYears: undefined,
@@ -61,7 +60,6 @@ export const useRiskStore = defineStore('risk', () => {
     formData.value = {
       enterpriseName: '',
       businessType: '',
-      productType: '',
       // 土地经营类
       landConfirmedArea: undefined,
       landTransferYears: undefined,
@@ -100,7 +98,6 @@ export const useRiskStore = defineStore('risk', () => {
   const dynamicForm = ref<DynamicRiskInput>({
     enterpriseName: '',
     businessType: '',
-    productType: '',
     selectedCategories: [],
     mixedBusiness: {},
     indicators: {},
@@ -114,7 +111,6 @@ export const useRiskStore = defineStore('risk', () => {
     dynamicForm.value = {
       enterpriseName: '',
       businessType: '',
-      productType: '',
       selectedCategories: [],
       mixedBusiness: {},
       indicators: {},
@@ -133,6 +129,11 @@ export const useRiskStore = defineStore('risk', () => {
     }
   }
 
+  /** 直接设置结果（用于加载历史评估记录详情） */
+  function setResult(result: RiskResult | null) {
+    riskResult.value = result
+  }
+
   return {
     formData,
     riskResult,
@@ -147,5 +148,6 @@ export const useRiskStore = defineStore('risk', () => {
     setDynamicForm,
     resetDynamicForm,
     assessDynamic,
+    setResult,
   }
 })

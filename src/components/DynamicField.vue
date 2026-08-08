@@ -2,7 +2,7 @@
 import type { PropType } from 'vue'
 import type { IndicatorField } from '@/api/types'
 
-const props = defineProps({
+defineProps({
   field: { type: Object as PropType<IndicatorField>, required: true },
   modelValue: { type: String, default: '' },
 })

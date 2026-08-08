@@ -41,12 +41,40 @@ const advantages = [
   {
     number: '02',
     title: '模型创新',
-    desc: '以 Logistic 回归评分卡为核心，结合 WOE 编码与业务阈值分级，信贷员“看得懂、讲得清”的可解释信用工具。',
+    desc: '以「专家规则引擎 + 数据层评分卡」双引擎为核心，全量指标打分可解释、可追溯，信贷员“看得懂、讲得清”。',
   },
   {
     number: '03',
     title: '场景创新',
-    desc: '专为东北涉农场景定制替代数据指标体系，将土地确权、农业补贴、农业保险等“沉睡数据”转化为信用资产。',
+    desc: '基于《农业及相关产业统计分类（2020）》构建全量分层动态指标体系，将土地确权、补贴、保险等“沉睡数据”转化为信用资产。',
+  },
+]
+
+// 系统核心能力
+const coreFeatures = [
+  {
+    icon: 'Files',
+    color: '#2c6e49',
+    title: '四层动态指标树',
+    desc: '基本项 + 大类 → 中类 → 小类 → 具体营业类型，700+ 指标按实际经营自动加载，未填指标不参与计分。',
+  },
+  {
+    icon: 'CircleCloseFilled',
+    color: '#f56c6c',
+    title: '一票否决红线',
+    desc: '失信被执行人、重大税收违法、连三累六等红线指标，任一命中即直接拒贷并提示人工复核。',
+  },
+  {
+    icon: 'Connection',
+    color: '#409eff',
+    title: '混合经营加权',
+    desc: '跨大类经营按比例加权评分，叠加种养结合、产销一体等协同因子，贴近真实经营形态。',
+  },
+  {
+    icon: 'DataAnalysis',
+    color: '#e6a23c',
+    title: '双引擎混合决策',
+    desc: '专家规则引擎与数据层评分卡混合决策，输出 0-1000 分、违约概率与数据完整度，过程透明可审计。',
   },
 ]
 </script>
@@ -59,10 +87,10 @@ const advantages = [
         <h1 class="hero-title">涉农小微企业信贷风险智能评估系统</h1>
         <p class="hero-subtitle">用得起 · 看得懂 · 信得过 — 东北县域农商行的轻量化涉农信贷风控工具</p>
         <div class="hero-tags">
-          <el-tag type="success" effect="dark" round>Logistic 评分卡</el-tag>
-          <el-tag type="success" effect="dark" round>IV 特征筛选</el-tag>
-          <el-tag type="success" effect="dark" round>WOE 编码</el-tag>
-          <el-tag type="success" effect="dark" round>替代数据指标</el-tag>
+          <el-tag type="success" effect="dark" round>专家规则引擎</el-tag>
+          <el-tag type="success" effect="dark" round>四层动态指标树</el-tag>
+          <el-tag type="success" effect="dark" round>一票否决红线</el-tag>
+          <el-tag type="success" effect="dark" round>混合经营加权</el-tag>
         </div>
       </div>
     </section>
@@ -103,20 +131,39 @@ const advantages = [
       </el-row>
     </section>
 
+    <!-- 系统核心能力 -->
+    <section class="section">
+      <div class="section-header">
+        <el-icon :size="24" color="#2c6e49"><SetUp /></el-icon>
+        <h2>系统核心能力</h2>
+      </div>
+      <el-row :gutter="20">
+        <el-col v-for="feat in coreFeatures" :key="feat.title" :xs="24" :sm="12" :md="6">
+          <div class="feature-card info-card">
+            <el-icon :size="32" :color="feat.color" class="feature-icon">
+              <component :is="feat.icon" />
+            </el-icon>
+            <h3>{{ feat.title }}</h3>
+            <p>{{ feat.desc }}</p>
+          </div>
+        </el-col>
+      </el-row>
+    </section>
+
     <!-- 技术路线 -->
     <section class="section">
       <div class="section-header">
         <el-icon :size="24" color="#2c6e49"><Connection /></el-icon>
-        <h2>技术路线（评分卡流程）</h2>
+        <h2>技术路线（专家引擎流程）</h2>
       </div>
       <div class="tech-flow info-card">
-        <el-steps :active="5" :direction="isMobile ? 'vertical' : 'horizontal'" align-center>
-          <el-step title="数据采集" description="四大维度15项替代数据指标" />
-          <el-step title="特征筛选" description="IV值评估 / VIF共线性诊断" />
-          <el-step title="WOE编码" description="连续变量分箱与证据权重转换" />
-          <el-step title="Logistic建模" description="回归系数 → 0-1000分评分卡" />
+        <el-steps :active="6" :direction="isMobile ? 'vertical' : 'horizontal'" align-center>
+          <el-step title="指标选择" description="勾选具体营业类型，自动加载大中小类指标" />
+          <el-step title="指标判断" description="数值分箱 / 枚举档位 / 布尔映射" />
+          <el-step title="权重建模" description="层级基础权重 + 星级归一 + 特色加成" />
+          <el-step title="专家评分" description="逐指标0-100分 → 加权合成0-1000分" />
           <el-step title="阈值分级" description="≥700低风险 / 500-700中 / <500高" />
-          <el-step title="授信建议" description="额度匹配 / 扣分原因提示" />
+          <el-step title="授信建议" description="额度匹配 / 扣分原因 / 一票否决" />
         </el-steps>
       </div>
     </section>
@@ -228,6 +275,28 @@ const advantages = [
 
   @media (max-width: 768px) {
     padding: 20px 12px;
+  }
+}
+
+.feature-card {
+  text-align: center;
+  padding: 28px 18px;
+  height: 100%;
+
+  .feature-icon {
+    margin-bottom: 12px;
+  }
+
+  h3 {
+    font-size: 15px;
+    margin-bottom: 8px;
+    color: #303133;
+  }
+
+  p {
+    font-size: 13px;
+    color: #909399;
+    line-height: 1.7;
   }
 }
 </style>

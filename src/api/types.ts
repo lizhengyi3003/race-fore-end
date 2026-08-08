@@ -3,7 +3,6 @@ export interface RiskInput {
   // 基本信息
   enterpriseName: string
   businessType: string // 经营类型：种植/养殖/加工/混合
-  productType: string // 主营产品
 
   // === 维度一：土地经营类 ===
   landConfirmedArea?: number // 确权耕地总面积（亩）
@@ -106,11 +105,49 @@ export interface IndicatorConfig {
   selected: { businessType: string; middleType: string; smallType: string; specificType?: string }
 }
 
+/** 分页响应（后端 PageData） */
+export interface PageData<T> {
+  total: number
+  page: number
+  size: number
+  items: T[]
+}
+
+/** 历史评估记录（列表项，GET /risk/records） */
+export interface AssessmentRecordItem {
+  id: number
+  enterpriseName: string
+  businessType: string
+  score: number
+  probability: number
+  level: string
+  suggestedAmount: number
+  suggestedRate: number
+  assessorName?: string | null
+  createdAt?: string
+  completeness?: number | null
+  veto?: string | null
+}
+
+/** 历史评估记录详情（GET /risk/records/{id}） */
+export interface AssessmentRecordDetail extends AssessmentRecordItem {
+  mixedBusiness?: Record<string, number> | null
+  indicatorValues?: Array<{
+    code: string
+    name: string
+    level: string
+    unit: string
+    value: string | null
+    quality: string
+  }> | null
+  input?: Record<string, unknown> | null
+  result?: RiskResult | null
+}
+
 /** 动态评估请求（POST /risk/assess-dynamic） */
 export interface DynamicRiskInput {
   enterpriseName: string
   businessType: string // 大类编码 01~10，混合=MIXED
-  productType: string
   middleType?: string
   smallType?: string
   specificType?: string

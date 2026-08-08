@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRiskStore } from '@/stores/risk'
 import * as echarts from 'echarts'
 import ScoreGauge from '@/components/ScoreGauge.vue'
 import RiskBadge from '@/components/RiskBadge.vue'
+import { deleteRiskRecord, getRiskRecord, getRiskRecords } from '@/api/risk'
+import type { AssessmentRecordItem } from '@/api/types'
 
 const router = useRouter()
 const riskStore = useRiskStore()
@@ -22,6 +25,7 @@ onMounted(() => {
     initBarChart()
   }
   window.addEventListener('resize', handleResize)
+  loadHistory()
 })
 
 onBeforeUnmount(() => {
@@ -32,6 +36,84 @@ onBeforeUnmount(() => {
 
 const result = computed(() => riskStore.riskResult!)
 
+// ---------- 历史评估记录（当前账号）----------
+const historyRecords = ref<AssessmentRecordItem[]>([])
+const historyTotal = ref(0)
+const historyPage = ref(1)
+const historySize = 8
+const historyLoading = ref(false)
+// 当前正在查看的历史记录（用于标题展示与删除联动）
+const viewingHistoryId = ref(0)
+const currentHistoryName = ref('')
+
+async function loadHistory(page = 1) {
+  historyLoading.value = true
+  try {
+    const data = await getRiskRecords({ page, size: historySize })
+    historyRecords.value = data.items
+    historyTotal.value = data.total
+    historyPage.value = page
+  } catch {
+    // 错误已由拦截器提示
+  } finally {
+    historyLoading.value = false
+  }
+}
+
+function formatTime(iso?: string): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
+}
+
+async function viewHistory(recordId: number) {
+  try {
+    const detail = await getRiskRecord(recordId)
+    if (!detail.result) {
+      ElMessage.warning('该记录缺少结果快照，无法查看')
+      return
+    }
+    riskStore.setResult(detail.result)
+    currentHistoryName.value = detail.enterpriseName || ''
+    viewingHistoryId.value = recordId
+    await nextTick()
+    initBarChart()
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  } catch {
+    // 错误已由拦截器提示
+  }
+}
+
+async function removeHistory(row: AssessmentRecordItem) {
+  try {
+    await ElMessageBox.confirm(`确认删除「${row.enterpriseName}」的评估记录？删除后不可恢复。`, '删除确认', {
+      type: 'warning',
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+    })
+  } catch {
+    return
+  }
+  try {
+    await deleteRiskRecord(row.id)
+    ElMessage.success('已删除')
+    if (viewingHistoryId.value === row.id) {
+      riskStore.setResult(null)
+      currentHistoryName.value = ''
+      viewingHistoryId.value = 0
+    }
+    if (historyRecords.value.length === 1 && historyPage.value > 1) {
+      loadHistory(historyPage.value - 1)
+    } else {
+      loadHistory(historyPage.value)
+    }
+  } catch {
+    // 错误已由拦截器提示
+  }
+}
+
 // 贡献图移动端最小宽度（每个指标约 96px），超出时容器横向滑动
 const contributionMinWidth = computed(() => (result.value?.contributions?.length || 6) * 96)
 
@@ -41,6 +123,7 @@ const probabilityPercent = computed(() => (result.value ? (result.value.probabil
 const printDate = computed(() => new Date().toLocaleString('zh-CN'))
 const reportTitle = computed(
   () =>
+    currentHistoryName.value ||
     riskStore.formData.enterpriseName ||
     riskStore.dynamicForm.enterpriseName ||
     '涉农经营主体'
@@ -52,6 +135,7 @@ function handlePrint() {
 
 function initBarChart() {
   if (!barChartRef.value || !result.value) return
+  barChart?.dispose()
   const chart = echarts.init(barChartRef.value)
   barChart = chart
 
@@ -112,11 +196,12 @@ function goBack() {
 </script>
 
 <template>
-  <div v-if="result" class="page-container">
-    <div class="page-header">
-      <h1>风险评估结果</h1>
-      <p>基于多元统计模型的综合信贷风险分析报告</p>
-    </div>
+  <div class="page-container">
+    <template v-if="result">
+      <div class="page-header">
+        <h1>风险评估结果</h1>
+        <p>基于多元统计模型的综合信贷风险分析报告</p>
+      </div>
 
     <!-- 打印报告页眉（仅打印时显示） -->
     <div class="print-header">
@@ -234,13 +319,67 @@ function goBack() {
         打印报告
       </el-button>
     </div>
-  </div>
+    </template>
 
-  <!-- 无数据占位 -->
-  <div v-else class="page-container">
-    <el-empty description="暂无评估结果，请先录入数据">
-      <el-button type="primary" @click="router.push('/input')">前往录入</el-button>
-    </el-empty>
+    <!-- 无数据占位 -->
+    <div v-if="!result" class="no-result-wrap">
+      <el-empty description="暂无评估结果，请先录入数据">
+        <el-button type="primary" @click="router.push('/input')">前往录入</el-button>
+      </el-empty>
+    </div>
+
+    <!-- 历史评估记录（当前账号） -->
+    <div class="info-card history-card">
+      <h3 class="card-title">
+        <el-icon style="vertical-align: middle; margin-right: 6px" color="#2c6e49"><Clock /></el-icon>
+        历史评估记录
+        <el-tag size="small" type="info" effect="plain" style="margin-left: 8px">当前账号 · {{ historyTotal }} 条</el-tag>
+      </h3>
+      <el-table
+        v-loading="historyLoading"
+        :data="historyRecords"
+        size="small"
+        stripe
+        empty-text="暂无历史评估记录"
+      >
+        <el-table-column prop="enterpriseName" label="企业名称" min-width="160" show-overflow-tooltip />
+        <el-table-column label="评分" width="76" align="center">
+          <template #default="{ row }">
+            <span
+              class="history-score"
+              :style="{ color: row.score >= 700 ? '#67c23a' : row.score >= 500 ? '#e6a23c' : '#f56c6c' }"
+            >
+              {{ row.score }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column label="风险等级" width="104" align="center">
+          <template #default="{ row }">
+            <RiskBadge :level="row.level" />
+          </template>
+        </el-table-column>
+        <el-table-column label="评估时间" width="150">
+          <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
+        </el-table-column>
+        <el-table-column label="操作" width="120" align="center">
+          <template #default="{ row }">
+            <el-button link type="primary" @click="viewHistory(row.id)">查看</el-button>
+            <el-button link type="danger" @click="removeHistory(row)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <div v-if="historyTotal > historySize" class="history-pager">
+        <el-pagination
+          layout="prev, pager, next"
+          :total="historyTotal"
+          :page-size="historySize"
+          :current-page="historyPage"
+          background
+          size="small"
+          @current-change="loadHistory"
+        />
+      </div>
+    </div>
   </div>
 </template>
 
@@ -415,6 +554,30 @@ function goBack() {
   justify-content: center;
   gap: 16px;
   margin-top: 8px;
+}
+
+.no-result-wrap {
+  padding: 40px 0;
+}
+
+.history-card {
+  margin-top: 20px;
+
+  .history-score {
+    font-weight: 700;
+    font-size: 15px;
+  }
+
+  .history-pager {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 12px;
+  }
+
+  // 移动端表格横向滚动
+  :deep(.el-table) {
+    width: 100%;
+  }
 }
 
 /* ---------- 打印报告样式 ---------- */
