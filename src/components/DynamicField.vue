@@ -110,10 +110,39 @@ watch(
   align-items: center;
   gap: 8px;
   width: 100%;
+  min-width: 0;
+
+  .el-input-number {
+    flex: 1;
+    min-width: 0;
+  }
+
   .unit {
     color: #909399;
     white-space: nowrap;
     font-size: 13px;
+    flex-shrink: 0;
+  }
+}
+
+// 移动端：label 置顶，避免 label 与控件互相挤压导致显示不全
+@media (max-width: 768px) {
+  .dynamic-field {
+    display: block;
+
+    :deep(.el-form-item__label) {
+      display: block;
+      width: auto !important;
+      height: auto;
+      text-align: left;
+      justify-content: flex-start;
+      line-height: 1.5;
+      margin-bottom: 4px;
+    }
+    :deep(.el-form-item__content) {
+      display: block;
+      margin-left: 0 !important;
+    }
   }
 }
 </style>

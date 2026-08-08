@@ -14,6 +14,8 @@ const riskStore = useRiskStore()
 
 const loading = ref(false)
 const submitting = ref(false)
+// 指标配置加载失败标志（提供页内重试，避免只能整页刷新）
+const loadError = ref(false)
 const treeData = ref<CategoryNode[]>([])
 const basicFields = ref<IndicatorField[]>([])
 
@@ -133,6 +135,7 @@ function onTreeCheck() {
 // ---------- 初始化 ----------
 async function init() {
   loading.value = true
+  loadError.value = false
   try {
     const tree = await getIndicatorTree()
     treeData.value = tree.categories
@@ -141,10 +144,16 @@ async function init() {
       if (!(f.code in values)) values[f.code] = ''
     })
   } catch {
-    ElMessage.error('指标配置加载失败，请确认后端已启动')
+    loadError.value = true
+    ElMessage.error('指标配置加载失败，请检查网络后点击「重新加载」')
   } finally {
     loading.value = false
   }
+}
+
+// 页内重试加载（网络抖动/接口超时后无需整页刷新）
+function retryLoad() {
+  init()
 }
 
 // ---------- 提交 ----------
@@ -218,8 +227,16 @@ onMounted(init)
     </div>
 
     <el-card v-loading="loading" shadow="never" class="input-card">
-      <!-- 基本信息 -->
-      <div class="section-title">基本信息</div>
+      <!-- 指标配置加载失败：页内重试（网络抖动/接口超时无需整页刷新） -->
+      <div v-if="loadError" class="load-error">
+        <el-empty description="指标配置加载失败，请检查网络后重试" :image-size="80">
+          <el-button type="primary" @click="retryLoad">重新加载</el-button>
+        </el-empty>
+      </div>
+
+      <template v-else>
+        <!-- 基本信息 -->
+        <div class="section-title">基本信息</div>
       <el-form label-width="110px" label-position="left" class="basic-form">
         <el-row :gutter="20">
           <el-col :xs="24" :md="24">
@@ -327,6 +344,7 @@ onMounted(init)
         <el-button :loading="submitting" type="primary" size="large" @click="handleSubmit">提交评估</el-button>
         <el-button size="large" @click="handleReset">重置</el-button>
       </div>
+      </template>
     </el-card>
   </div>
 </template>
@@ -447,11 +465,54 @@ onMounted(init)
 .empty-tip {
   padding: 40px 0;
 }
+.load-error {
+  padding: 40px 0;
+}
 .actions {
   margin-top: 24px;
   padding-top: 16px;
   border-top: 1px solid #f0f0f0;
   display: flex;
   gap: 12px;
+}
+
+// ===== 移动端适配 =====
+@media (max-width: 768px) {
+  .dynamic-input-page {
+    padding: 12px;
+  }
+  .section-title {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  // 基本信息 label 置顶
+  .basic-form {
+    :deep(.el-form-item__label) {
+      display: block;
+      width: auto !important;
+      height: auto;
+      text-align: left;
+      justify-content: flex-start;
+      line-height: 1.5;
+      margin-bottom: 4px;
+    }
+    :deep(.el-form-item__content) {
+      display: block;
+      margin-left: 0 !important;
+    }
+  }
+  .tree-wrap {
+    .tree-scroll {
+      max-height: 320px;
+    }
+  }
+  // 操作按钮移动端全宽
+  .actions {
+    flex-direction: column;
+    :deep(.el-button) {
+      width: 100%;
+      margin-left: 0;
+    }
+  }
 }
 </style>

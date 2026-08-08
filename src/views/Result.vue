@@ -378,33 +378,42 @@ function goBack() {
             >当前账号 · {{ historyTotal }} 条</el-tag
           >
         </h3>
-        <el-table v-loading="historyLoading" :data="historyRecords" size="small" stripe empty-text="暂无历史评估记录">
-          <el-table-column prop="enterpriseName" label="企业名称" min-width="160" show-overflow-tooltip />
-          <el-table-column label="评分" width="76" align="center">
-            <template #default="{ row }">
-              <span
-                class="history-score"
-                :style="{ color: row.score >= 700 ? '#67c23a' : row.score >= 500 ? '#e6a23c' : '#f56c6c' }"
-              >
-                {{ row.score }}
-              </span>
-            </template>
-          </el-table-column>
-          <el-table-column label="风险等级" width="104" align="center">
-            <template #default="{ row }">
-              <RiskBadge :level="row.level" />
-            </template>
-          </el-table-column>
-          <el-table-column label="评估时间" width="150">
-            <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
-          </el-table-column>
-          <el-table-column label="操作" width="120" align="center">
-            <template #default="{ row }">
-              <el-button link type="primary" @click="viewHistory(row.id)">查看</el-button>
-              <el-button link type="danger" @click="removeHistory(row)">删除</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
+        <div class="table-scroll">
+          <el-table
+            v-loading="historyLoading"
+            :data="historyRecords"
+            size="small"
+            stripe
+            empty-text="暂无历史评估记录"
+            style="min-width: 660px"
+          >
+            <el-table-column prop="enterpriseName" label="企业名称" min-width="150" show-overflow-tooltip />
+            <el-table-column label="评分" width="72" align="center">
+              <template #default="{ row }">
+                <span
+                  class="history-score"
+                  :style="{ color: row.score >= 700 ? '#67c23a' : row.score >= 500 ? '#e6a23c' : '#f56c6c' }"
+                >
+                  {{ row.score }}
+                </span>
+              </template>
+            </el-table-column>
+            <el-table-column label="风险等级" width="118" align="center">
+              <template #default="{ row }">
+                <RiskBadge :level="row.level" />
+              </template>
+            </el-table-column>
+            <el-table-column label="评估时间" width="150">
+              <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
+            </el-table-column>
+            <el-table-column label="操作" width="120" align="center">
+              <template #default="{ row }">
+                <el-button link type="primary" @click="viewHistory(row.id)">查看</el-button>
+                <el-button link type="danger" @click="removeHistory(row)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
         <div v-if="historyTotal > historySize" class="history-pager">
           <el-pagination
             layout="prev, pager, next"
@@ -703,9 +712,14 @@ function goBack() {
     margin-top: 12px;
   }
 
-  // 移动端表格横向滚动
-  :deep(.el-table) {
-    width: 100%;
+  // 历史记录表格：窄屏时横向滚动，避免列被压缩（风险等级/时间显示不全）
+  .table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+
+    :deep(.el-table) {
+      width: 100%;
+    }
   }
 }
 
