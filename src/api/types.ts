@@ -70,13 +70,6 @@ export interface IndicatorTree {
   categories: CategoryNode[]
 }
 
-/** 渐进式表单配置 */
-export interface IndicatorConfig {
-  basic: IndicatorField[]
-  indicators: IndicatorField[]
-  selected: { businessType: string; middleType: string; smallType: string; specificType?: string }
-}
-
 /** 评估原始表单快照项（本次评估提交时的指标填写值） */
 export interface FormSnapshotItem {
   code: string

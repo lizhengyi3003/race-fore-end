@@ -253,15 +253,6 @@ function goBack() {
           <p>基于多元统计模型的综合信贷风险分析报告</p>
         </div>
 
-        <!-- 打印报告页眉（仅打印时显示） -->
-        <div class="print-header">
-          <h2>涉农小微企业信贷风险评估报告</h2>
-          <p>
-            企业名称：{{ reportTitle }} ｜ 生成时间：{{ printDate }} ｜ 系统：涉农信贷风险智能评估系统（Logistic
-            评分卡）
-          </p>
-        </div>
-
         <!-- 核心指标卡片 -->
         <el-row :gutter="20" class="result-cards">
           <!-- 信用评分仪表盘 -->
@@ -441,7 +432,7 @@ function goBack() {
         <el-table-column prop="unit" label="单位" width="80" />
         <el-table-column prop="value" label="填写值" min-width="120" />
       </el-table>
-      <el-empty v-else description="该评估没有已填写的指标数据（可能为 15 项传统评估或未填指标）" :image-size="80" />
+      <el-empty v-else description="该评估没有已填写的指标数据" :image-size="80" />
     </el-drawer>
 
     <!-- 正式打印报告（仅打印时显示） -->
