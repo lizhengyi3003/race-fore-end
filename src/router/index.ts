@@ -5,12 +5,17 @@ import { useAuthStore } from '@/stores/auth'
 /**
  * 懒加载包装：当路由组件 chunk 加载失败时（通常因部署更新后旧 chunk 已从线上移除，
  * 而当前页面仍运行旧版入口），自动刷新页面加载最新版本，避免页面卡在旧路由。
+ * 增加超时兜底：chunk 网络挂起（如隧道 HTTP2 PING 失败）超时后同样自动刷新，防止导航卡死。
  */
 const MAX_AUTO_RELOAD = 2
+const CHUNK_TIMEOUT = 20000
 
 function lazyView(loader: () => Promise<unknown>): () => Promise<unknown> {
   return () =>
-    loader().catch((err: unknown) => {
+    Promise.race([
+      loader(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('chunk load timeout')), CHUNK_TIMEOUT)),
+    ]).catch((err: unknown) => {
       console.warn('[router] 路由组件懒加载失败，自动刷新加载最新版本:', err)
       const count = Number(sessionStorage.getItem('__race_chunk_reload__') || 0)
       if (count < MAX_AUTO_RELOAD) {
