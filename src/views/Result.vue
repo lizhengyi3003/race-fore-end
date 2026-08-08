@@ -142,7 +142,6 @@ const printDate = computed(() => new Date().toLocaleString('zh-CN'))
 const reportTitle = computed(
   () =>
     currentHistoryName.value ||
-    riskStore.formData.enterpriseName ||
     riskStore.dynamicForm.enterpriseName ||
     '涉农经营主体'
 )
@@ -168,7 +167,7 @@ const BIG_TYPE_NAMES: Record<string, string> = {
   '10': '其他支持服务',
 }
 const businessTypeText = computed(() => {
-  const bt = riskStore.dynamicForm.businessType || riskStore.formData.businessType || ''
+  const bt = riskStore.dynamicForm.businessType || ''
   if (!bt) return '—'
   if (bt === 'MIXED') return '混合经营'
   return BIG_TYPE_NAMES[bt] || bt

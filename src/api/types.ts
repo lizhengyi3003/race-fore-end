@@ -1,33 +1,3 @@
-/** 涉农企业风险录入数据（文档 3.3.2 四大维度 15 项替代数据指标体系） */
-export interface RiskInput {
-  // 基本信息
-  enterpriseName: string
-  businessType: string // 经营类型：种植/养殖/加工/混合
-
-  // === 维度一：土地经营类 ===
-  landConfirmedArea?: number // 确权耕地总面积（亩）
-  landTransferYears?: number // 土地流转合同年限（年）
-  landTransferStability: string // 稳定/小幅调整/频繁变更
-  blackSoilProtection?: number // 黑土地保护性耕作面积（亩）
-
-  // === 维度二：农业补贴类 ===
-  grainSubsidy?: number // 耕地地力保护补贴（元）
-  machinerySubsidy?: number // 大型农机购置补贴（元）
-  grainScaleSubsidy?: number // 粮食规模种植专项补贴（元）
-  specialtyCropSubsidy?: number // 特色经济作物补贴（元）
-
-  // === 维度三：农业保险类 ===
-  insuranceYears?: number // 农业保险连续投保年限（年）
-  claimCount?: number // 历史保险理赔频次（次）
-  facilityInsurance: string // 完整投保/仅基础险/未投保
-
-  // === 维度四：产销经营类 ===
-  yearsOperating?: number // 主体持续经营年限（年）
-  purchaseOrder: string // 年度订单/零散收购/无稳定渠道
-  annualRevenue?: number // 农产品年稳定营收（万元）
-  creditRecord: string // 无逾期/有逾期
-}
-
 /** 各指标贡献权重 */
 export interface FactorContribution {
   factor: string

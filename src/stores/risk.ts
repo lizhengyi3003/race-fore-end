@@ -1,34 +1,10 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { DynamicRiskInput, FormSnapshotItem, RiskInput, RiskResult } from '@/api/types'
-import { submitDynamicRiskAssessment, submitRiskAssessment } from '@/api/risk'
+import type { DynamicRiskInput, FormSnapshotItem, RiskResult } from '@/api/types'
+import { submitDynamicRiskAssessment } from '@/api/risk'
 
 export const useRiskStore = defineStore('risk', () => {
   // --- State ---
-  const formData = ref<RiskInput>({
-    enterpriseName: '',
-    businessType: '',
-    // 土地经营类
-    landConfirmedArea: undefined,
-    landTransferYears: undefined,
-    landTransferStability: '',
-    blackSoilProtection: undefined,
-    // 农业补贴类
-    grainSubsidy: undefined,
-    machinerySubsidy: undefined,
-    grainScaleSubsidy: undefined,
-    specialtyCropSubsidy: undefined,
-    // 农业保险类
-    insuranceYears: undefined,
-    claimCount: undefined,
-    facilityInsurance: '',
-    // 产销经营类
-    yearsOperating: undefined,
-    purchaseOrder: '',
-    annualRevenue: undefined,
-    creditRecord: '',
-  })
-
   const riskResult = ref<RiskResult | null>(null)
   const isCalculating = ref(false)
 
@@ -52,48 +28,6 @@ export const useRiskStore = defineStore('risk', () => {
   })
 
   // --- Actions ---
-  function setFormData(data: Partial<RiskInput>) {
-    Object.assign(formData.value, data)
-  }
-
-  function resetForm() {
-    formData.value = {
-      enterpriseName: '',
-      businessType: '',
-      // 土地经营类
-      landConfirmedArea: undefined,
-      landTransferYears: undefined,
-      landTransferStability: '',
-      blackSoilProtection: undefined,
-      // 农业补贴类
-      grainSubsidy: undefined,
-      machinerySubsidy: undefined,
-      grainScaleSubsidy: undefined,
-      specialtyCropSubsidy: undefined,
-      // 农业保险类
-      insuranceYears: undefined,
-      claimCount: undefined,
-      facilityInsurance: '',
-      // 产销经营类
-      yearsOperating: undefined,
-      purchaseOrder: '',
-      annualRevenue: undefined,
-      creditRecord: '',
-    }
-    riskResult.value = null
-  }
-
-  async function assessRisk() {
-    isCalculating.value = true
-    try {
-      riskResult.value = await submitRiskAssessment(formData.value)
-    } catch {
-      // 请求失败时保留原结果
-    } finally {
-      isCalculating.value = false
-    }
-  }
-
   // ================= 动态指标体系（Phase 2）=================
   const dynamicForm = ref<DynamicRiskInput>({
     enterpriseName: '',
@@ -141,15 +75,11 @@ export const useRiskStore = defineStore('risk', () => {
   }
 
   return {
-    formData,
     riskResult,
     isCalculating,
     hasResult,
     scoreLevel,
     scoreColor,
-    setFormData,
-    resetForm,
-    assessRisk,
     dynamicForm,
     setDynamicForm,
     resetDynamicForm,
