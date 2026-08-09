@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios'
+import type { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
 import { ElMessage } from 'element-plus'
 import { TOKEN_KEY, USER_KEY } from '@/constants'
 
@@ -99,25 +99,27 @@ http.interceptors.response.use(
 
 // ------------------------------------------------------------------
 // 类型化请求封装
-// axios 第二个泛型 R 声明为「后端信封 ApiEnvelope<T>」，这里解包 .data 拿到业务载荷 T。
-// 因此 http.get<T> / http.post<T> 直接返回 Promise<T>，类型与运行时行为一致。
+// 响应拦截器成功时返回完整 AxiosResponse（满足 axios 拦截器签名），
+// 因此这里声明 R = AxiosResponse<ApiEnvelope<T>> 与运行时完全一致，
+// 再解两层：res.data = 信封 {code,message,data}，res.data.data = 业务载荷 T。
+// 因此 http.get<T> / http.post<T> 直接返回 Promise<T>，类型与运行时一致。
 // ------------------------------------------------------------------
 const request = {
   get: async <T>(url: string, config?: AxiosRequestConfig): Promise<T> => {
-    const res = await http.get<unknown, ApiEnvelope<T>>(url, config)
-    return res.data
+    const res = await http.get<unknown, AxiosResponse<ApiEnvelope<T>>>(url, config)
+    return res.data.data
   },
   post: async <T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> => {
-    const res = await http.post<unknown, ApiEnvelope<T>>(url, data, config)
-    return res.data
+    const res = await http.post<unknown, AxiosResponse<ApiEnvelope<T>>>(url, data, config)
+    return res.data.data
   },
   put: async <T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> => {
-    const res = await http.put<unknown, ApiEnvelope<T>>(url, data, config)
-    return res.data
+    const res = await http.put<unknown, AxiosResponse<ApiEnvelope<T>>>(url, data, config)
+    return res.data.data
   },
   delete: async <T = void>(url: string, config?: AxiosRequestConfig): Promise<T> => {
-    const res = await http.delete<unknown, ApiEnvelope<T>>(url, config)
-    return res.data
+    const res = await http.delete<unknown, AxiosResponse<ApiEnvelope<T>>>(url, config)
+    return res.data.data
   },
 }
 
