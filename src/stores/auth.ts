@@ -1,9 +1,13 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { login as apiLogin, getMe, type LoginUser } from '@/api/auth'
+import { TOKEN_KEY, USER_KEY } from '@/constants'
 
-const TOKEN_KEY = 'race_token'
-const USER_KEY = 'race_user'
+/** 判断错误是否为「登录失效」：业务 401（信封 code）或 HTTP 401 */
+function isAuthError(err: unknown): boolean {
+  const e = err as { response?: { status?: number }; code?: number } | null
+  return e?.response?.status === 401 || e?.code === 401
+}
 
 function loadUser(): LoginUser | null {
   try {
@@ -36,8 +40,12 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = await getMe()
       localStorage.setItem(USER_KEY, JSON.stringify(user.value))
       return true
-    } catch {
-      logout()
+    } catch (err) {
+      // 仅当 token 确已失效（业务 401 / HTTP 401）才清除登录态；
+      // 瞬时网络错误不登出，避免用户被误踢下线
+      if (isAuthError(err)) {
+        logout()
+      }
       return false
     }
   }

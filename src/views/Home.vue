@@ -1,3 +1,6 @@
+<!--
+  项目介绍页（首页）：行业痛点、创新点、核心能力与技术路线展示（静态数据）。
+-->
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 

@@ -1,3 +1,6 @@
+<!--
+  统计卡片组件：标题 + 数值 + 可选单位/图标/主题色（数据看板概览用）。
+-->
 <script setup lang="ts">
 defineProps<{
   title: string

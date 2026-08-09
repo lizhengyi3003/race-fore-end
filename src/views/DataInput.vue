@@ -1,3 +1,7 @@
+<!--
+  数据录入页（动态指标体系）：勾选「具体营业类型」叶子（可多选/搜索）自动加载路径指标，
+  填写基本项 + 动态指标后提交评估；支持混合经营占比分配与页内重试。
+-->
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -71,7 +75,18 @@ const displayGroups = computed(() => {
 })
 
 const totalDisplayFields = computed(() => displayGroups.value.reduce((a, g) => a + g.fields.length, 0))
-const expandedGroupNames = computed(() => displayGroups.value.map((_, i) => `${i}`))
+
+// ---------- 折叠面板展开状态（默认全部展开，可手动收起）----------
+const expandedBasics = ref<string[]>(['basic'])
+const expandedGroups = ref<string[]>([])
+// 勾选路径变化时默认展开全部新增分组（不覆盖用户手动收起的状态）
+watch(
+  () => displayGroups.value.map((g) => g.catDisplay).join('|'),
+  () => {
+    expandedGroups.value = displayGroups.value.map((_, i) => String(i))
+  },
+  { immediate: true }
+)
 
 // ---------- 具体营业类型（国标 4+4 位叶子）列表：勾选后按叶子分配权重 ----------
 const leafList = computed(() =>
@@ -194,8 +209,11 @@ async function handleSubmit() {
   })
   submitting.value = true
   try {
-    await riskStore.assessDynamic()
-    router.push('/result')
+    const ok = await riskStore.assessDynamic()
+    // 仅评估成功才进入结果页；失败时保留表单现场，错误提示已由拦截器弹出
+    if (ok) {
+      router.push('/result')
+    }
   } finally {
     submitting.value = false
   }
@@ -235,113 +253,113 @@ onMounted(init)
       <template v-else>
         <!-- 基本信息 -->
         <div class="section-title">基本信息</div>
-      <el-form label-width="110px" label-position="left" class="basic-form">
-        <el-row :gutter="20">
-          <el-col :xs="24" :md="24">
-            <el-form-item label="企业名称" required>
-              <el-input v-model="enterpriseName" placeholder="企业/合作社/家庭农场/个体户全称" maxlength="50" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-      </el-form>
+        <el-form label-width="110px" label-position="left" class="basic-form">
+          <el-row :gutter="20">
+            <el-col :xs="24" :md="24">
+              <el-form-item label="企业名称" required>
+                <el-input v-model="enterpriseName" placeholder="企业/合作社/家庭农场/个体户全称" maxlength="50" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </el-form>
 
-      <!-- 经营类别：el-tree 4级多选 -->
-      <div class="section-title">
-        经营类别（勾选具体营业类型，可多选）
-        <el-tag v-if="checkedLeaves.length" size="small" type="success" effect="plain">
-          已选 {{ checkedLeaves.length }} 个
-        </el-tag>
-      </div>
-      <div class="tree-wrap">
-        <el-input
-          v-model="filterText"
-          placeholder="搜索经营类别，如：稻谷、玉米、加工、服务…"
-          clearable
-          class="tree-filter"
-        />
-        <div class="tree-scroll">
-          <el-tree
-            ref="treeRef"
-            :data="treeData"
-            node-key="code"
-            :props="{ label: 'display', children: 'children' }"
-            :filter-node-method="filterNode"
-            @check="onTreeCheck"
-          >
-            <template #default="{ node, data }">
-              <div class="custom-tree-node">
-                <el-checkbox
-                  v-if="isLeaf(data)"
-                  :model-value="node.checked"
-                  class="leaf-checkbox"
-                  @click.stop
-                  @change="(val: boolean | string | number) => onLeafToggle(node, !!val)"
-                />
-                <span class="node-label" :class="{ 'is-leaf': isLeaf(data) }">{{ data.display }}</span>
-                <span v-if="!isLeaf(data) && data.indicator_count" class="node-count">
-                  {{ data.indicator_count }} 项指标
-                </span>
-              </div>
-            </template>
-          </el-tree>
+        <!-- 经营类别：el-tree 4级多选 -->
+        <div class="section-title">
+          经营类别（勾选具体营业类型，可多选）
+          <el-tag v-if="checkedLeaves.length" size="small" type="success" effect="plain">
+            已选 {{ checkedLeaves.length }} 个
+          </el-tag>
         </div>
-        <div v-if="isMixed" class="mixed-wrap">
-          <div class="mixed-title">
-            <el-icon><Connection /></el-icon>
-            混合经营占比（勾选 {{ leafList.length }} 个具体营业类型）
+        <div class="tree-wrap">
+          <el-input
+            v-model="filterText"
+            placeholder="搜索经营类别，如：稻谷、玉米、加工、服务…"
+            clearable
+            class="tree-filter"
+          />
+          <div class="tree-scroll">
+            <el-tree
+              ref="treeRef"
+              :data="treeData"
+              node-key="code"
+              :props="{ label: 'display', children: 'children' }"
+              :filter-node-method="filterNode"
+              @check="onTreeCheck"
+            >
+              <template #default="{ node, data }">
+                <div class="custom-tree-node">
+                  <el-checkbox
+                    v-if="isLeaf(data)"
+                    :model-value="node.checked"
+                    class="leaf-checkbox"
+                    @click.stop
+                    @change="(val: boolean | string | number) => onLeafToggle(node, !!val)"
+                  />
+                  <span class="node-label" :class="{ 'is-leaf': isLeaf(data) }">{{ data.display }}</span>
+                  <span v-if="!isLeaf(data) && data.indicator_count" class="node-count">
+                    {{ data.indicator_count }} 项指标
+                  </span>
+                </div>
+              </template>
+            </el-tree>
           </div>
-          <MixedRatioSlider v-model:ratios="mixedRatios" :items="leafList" />
+          <div v-if="isMixed" class="mixed-wrap">
+            <div class="mixed-title">
+              <el-icon><Connection /></el-icon>
+              混合经营占比（勾选 {{ leafList.length }} 个具体营业类型）
+            </div>
+            <MixedRatioSlider v-model:ratios="mixedRatios" :items="leafList" />
+          </div>
         </div>
-      </div>
 
-      <!-- 基本项（所有主体必填，可先填写） -->
-      <template v-if="basicFields.length">
-        <div class="section-title">
-          基本项（共 {{ basicFields.length }} 项）
-          <span class="section-sub">所有主体必填的基础信息</span>
+        <!-- 基本项（所有主体必填，可先填写） -->
+        <template v-if="basicFields.length">
+          <div class="section-title">
+            基本项（共 {{ basicFields.length }} 项）
+            <span class="section-sub">所有主体必填的基础信息</span>
+          </div>
+          <el-collapse v-model="expandedBasics" class="basic-collapse">
+            <el-collapse-item name="basic" title="展开 / 收起基本项">
+              <el-row :gutter="20">
+                <el-col v-for="f in basicFields" :key="f.code" :xs="24" :md="12" :lg="8">
+                  <DynamicField v-model="values[f.code]" :field="f" />
+                </el-col>
+              </el-row>
+            </el-collapse-item>
+          </el-collapse>
+        </template>
+
+        <!-- 勾选路径指标（大类→中类→小类→具体营业类型） -->
+        <template v-if="displayGroups.length">
+          <div class="section-title">
+            勾选经营类型的指标（共 {{ totalDisplayFields }} 项）
+            <span class="section-sub">按 大类 → 中类 → 小类 → 具体营业类型 依次展示</span>
+          </div>
+          <el-collapse v-model="expandedGroups" class="group-collapse">
+            <el-collapse-item
+              v-for="(g, i) in displayGroups"
+              :key="i"
+              :name="`${i}`"
+              :title="`${g.level} · ${g.catDisplay}（${g.fields.length} 项）`"
+            >
+              <el-row :gutter="20">
+                <el-col v-for="f in g.fields" :key="f.code" :xs="24" :md="12" :lg="8">
+                  <DynamicField v-model="values[f.code]" :field="f" />
+                </el-col>
+              </el-row>
+            </el-collapse-item>
+          </el-collapse>
+        </template>
+
+        <div v-if="!checkedLeaves.length" class="empty-tip">
+          <el-empty description="请先在经营类别中勾选具体营业类型，系统将自动加载对应指标" :image-size="80" />
         </div>
-        <el-collapse :model-value="['basic']" class="basic-collapse">
-          <el-collapse-item name="basic" title="展开 / 收起基本项">
-            <el-row :gutter="20">
-              <el-col v-for="f in basicFields" :key="f.code" :xs="24" :md="12" :lg="8">
-                <DynamicField v-model="values[f.code]" :field="f" />
-              </el-col>
-            </el-row>
-          </el-collapse-item>
-        </el-collapse>
-      </template>
 
-      <!-- 勾选路径指标（大类→中类→小类→具体营业类型） -->
-      <template v-if="displayGroups.length">
-        <div class="section-title">
-          勾选经营类型的指标（共 {{ totalDisplayFields }} 项）
-          <span class="section-sub">按 大类 → 中类 → 小类 → 具体营业类型 依次展示</span>
+        <!-- 操作 -->
+        <div class="actions">
+          <el-button :loading="submitting" type="primary" size="large" @click="handleSubmit">提交评估</el-button>
+          <el-button size="large" @click="handleReset">重置</el-button>
         </div>
-        <el-collapse class="group-collapse" :model-value="expandedGroupNames">
-          <el-collapse-item
-            v-for="(g, i) in displayGroups"
-            :key="i"
-            :name="`${i}`"
-            :title="`${g.level} · ${g.catDisplay}（${g.fields.length} 项）`"
-          >
-            <el-row :gutter="20">
-              <el-col v-for="f in g.fields" :key="f.code" :xs="24" :md="12" :lg="8">
-                <DynamicField v-model="values[f.code]" :field="f" />
-              </el-col>
-            </el-row>
-          </el-collapse-item>
-        </el-collapse>
-      </template>
-
-      <div v-if="!checkedLeaves.length" class="empty-tip">
-        <el-empty description="请先在经营类别中勾选具体营业类型，系统将自动加载对应指标" :image-size="80" />
-      </div>
-
-      <!-- 操作 -->
-      <div class="actions">
-        <el-button :loading="submitting" type="primary" size="large" @click="handleSubmit">提交评估</el-button>
-        <el-button size="large" @click="handleReset">重置</el-button>
-      </div>
       </template>
     </el-card>
   </div>

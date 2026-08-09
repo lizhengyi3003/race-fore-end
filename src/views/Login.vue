@@ -1,3 +1,7 @@
+<!--
+  登录页：邀约制登录（无注册入口），点击登录弹出 go-captcha 行为验证码
+  （click/slide/drag/rotate 四种模式随机），校验通过后自动登录并跳转。
+-->
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -7,6 +11,7 @@ import { Click, Slide, SlideRegion, Rotate } from 'go-captcha-vue'
 import 'go-captcha-vue/dist/style.css'
 import { useAuthStore } from '@/stores/auth'
 import { getCaptcha, checkCaptcha, type CaptchaData, type CaptchaType } from '@/api/captcha'
+import { FOOTER_TEXT } from '@/constants'
 
 const router = useRouter()
 const route = useRoute()
@@ -110,7 +115,11 @@ function onRotateConfirm(angle: number, reset: () => void) {
   doCheck(String(angle), reset)
 }
 
-/** 组件内置按钮事件：refresh 换一张；close 清除点选（组件内部已清） */
+/**
+ * go-captcha 组件事件回调：
+ *  - refresh：组件内置「换一张」按钮 → 重新加载（随机换类型）
+ *  - close：组件内置「清除点选」按钮；点选由组件内部状态自行清除，无需额外处理
+ */
 function captchaEvents() {
   return {
     refresh: loadCaptcha,
@@ -192,7 +201,7 @@ function handleKeydown(e: KeyboardEvent) {
       </div>
     </div>
 
-    <div class="login-footer">© 2026 涉农信贷风控系统 · "挑战杯"创业计划竞赛 · 东北乡村振兴</div>
+    <div class="login-footer">{{ FOOTER_TEXT }}</div>
 
     <!-- 行为验证码弹窗：点击登录后弹出，校验通过才继续登录 -->
     <el-dialog

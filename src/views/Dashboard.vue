@@ -1,20 +1,33 @@
+<!--
+  数据看板：展示后端真实评估记录的统计概览（评分分布 / 行业分布 / 近 30 天趋势）。
+  数据统一通过 src/api/dashboard.ts 拉取，图表用 ECharts 渲染并随窗口自适应。
+-->
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import * as echarts from 'echarts'
 import StatCard from '@/components/StatCard.vue'
-import http from '@/api/index'
+import {
+  getDashboardStats,
+  getDashboardTrend,
+  getIndustryDistribution,
+  getScoreDistribution,
+  type DashboardStats,
+  type IndustryDistItem,
+  type ScoreDistItem,
+  type TrendItem,
+} from '@/api/dashboard'
 
 // --- 后端真实统计数据 ---
-const statsData = ref({
+const statsData = ref<DashboardStats>({
   totalAssess: 0,
   avgScore: 0,
   highRiskRate: 0,
   passRate: 0,
 })
 
-const industryData = ref<{ name: string; value: number; risk: string }[]>([])
-const scoreDistData = ref<{ range: string; count: number }[]>([])
-const trendData = ref<{ date: string; count: number; avgScore: number }[]>([])
+const industryData = ref<IndustryDistItem[]>([])
+const scoreDistData = ref<ScoreDistItem[]>([])
+const trendData = ref<TrendItem[]>([])
 
 // --- Chart refs ---
 const pieChartRef = ref<HTMLElement>()
@@ -30,16 +43,17 @@ function handleResize() {
 
 async function loadDashboard() {
   try {
+    // 四个看板接口并行拉取，任一失败由拦截器统一提示并保持空数据
     const [stats, industry, scoreDist, trend] = await Promise.all([
-      http.get('/dashboard/stats'),
-      http.get('/dashboard/industry-distribution'),
-      http.get('/dashboard/score-distribution'),
-      http.get('/dashboard/trend', { params: { days: 30 } }),
+      getDashboardStats(),
+      getIndustryDistribution(),
+      getScoreDistribution(),
+      getDashboardTrend(30),
     ])
-    statsData.value = stats.data
-    industryData.value = industry.data
-    scoreDistData.value = scoreDist.data
-    trendData.value = trend.data
+    statsData.value = stats
+    industryData.value = industry
+    scoreDistData.value = scoreDist
+    trendData.value = trend
     initPieChart()
     initBarChart()
     initTrendChart()

@@ -23,11 +23,16 @@ export const useRiskStore = defineStore('risk', () => {
     Object.assign(dynamicForm.value, data)
   }
 
-  async function assessDynamic() {
+  /**
+   * 提交动态评估：成功返回 true（结果已写入 riskResult）；失败返回 false（保留原结果）。
+   * 错误提示已由响应拦截器统一弹出，调用方据此决定是否跳转结果页。
+   */
+  async function assessDynamic(): Promise<boolean> {
     try {
       riskResult.value = await submitDynamicRiskAssessment(dynamicForm.value)
+      return true
     } catch {
-      // 请求失败时保留原结果
+      return false
     }
   }
 

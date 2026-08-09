@@ -19,12 +19,10 @@ export interface LoginResult {
 
 /** 登录（邀约制：账号由管理端后台开通，无注册入口；captchaKey 为已完成的行为验证码） */
 export async function login(username: string, password: string, captchaKey = ''): Promise<LoginResult> {
-  const res = await http.post<LoginResult>('/auth/login', { username, password, captchaKey })
-  return res.data
+  return http.post<LoginResult>('/auth/login', { username, password, captchaKey })
 }
 
 /** 获取当前登录用户信息 */
 export async function getMe(): Promise<LoginUser> {
-  const res = await http.get<LoginUser>('/auth/me')
-  return res.data
+  return http.get<LoginUser>('/auth/me')
 }

@@ -20,12 +20,10 @@ export interface CaptchaData {
 
 /** 获取行为验证码：GET /api/v1/captcha（四种模式随机） */
 export async function getCaptcha(): Promise<CaptchaData> {
-  const res = await http.get<CaptchaData>('/captcha')
-  return res.data
+  return http.get<CaptchaData>('/captcha')
 }
 
 /** 校验验证码：POST /api/v1/captcha/check（value 由前端按类型拼接） */
 export async function checkCaptcha(captchaKey: string, type: CaptchaType, value: string): Promise<{ passed: boolean }> {
-  const res = await http.post<{ passed: boolean }>('/captcha/check', { captchaKey, type, value })
-  return res.data
+  return http.post<{ passed: boolean }>('/captcha/check', { captchaKey, type, value })
 }

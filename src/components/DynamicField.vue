@@ -1,3 +1,7 @@
+<!--
+  动态指标字段组件：按 indicator_type 渲染数值 / 枚举 / 布尔 / 文本控件，
+  带「特色」「一票否决」标签，blur/change 即时校验。
+-->
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import type { PropType } from 'vue'

@@ -1,7 +1,10 @@
+<!--
+  信用评分仪表盘：ECharts gauge 组件，弧线按风险等级三段配色（<500 红 / 500-700 橙 / ≥700 绿），
+  评分变化时重建配置同步刷新。
+-->
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as echarts from 'echarts'
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const props = defineProps<{
   score: number
@@ -14,15 +17,21 @@ const gaugeRef = ref<HTMLElement>()
 const maxScore = computed(() => props.max ?? 1000)
 
 // 弧线按风险等级固定三段分区（对齐业务阈值：<500 红 / 500-700 橙 / ≥700 绿）
-// offset 0 对应 0 分、1 对应 1000 分；用近似 offset 实现硬边界（ECharts 要求 offset 严格升序）
-const colorStops: [number, string][] = [
-  [0, '#f56c6c'],
-  [0.4999, '#f56c6c'],
-  [0.5, '#e6a23c'],
-  [0.6999, '#e6a23c'],
-  [0.7, '#67c23a'],
-  [1, '#67c23a'],
-]
+// 根据实际 max 折算 offset（默认 max=1000 时即 0.5 / 0.7），保证任意刻度配色不错位；
+// 用近似 offset 实现硬边界（ECharts 要求 offset 严格升序）
+const colorStops = computed<[number, string][]>(() => {
+  const max = maxScore.value
+  const red = 500 / max
+  const orange = 700 / max
+  return [
+    [0, '#f56c6c'],
+    [Math.min(red - 0.0001, 0.9999), '#f56c6c'],
+    [red, '#e6a23c'],
+    [Math.min(orange - 0.0001, 0.9999), '#e6a23c'],
+    [orange, '#67c23a'],
+    [1, '#67c23a'],
+  ]
+})
 
 function buildOption() {
   return {
@@ -41,7 +50,7 @@ function buildOption() {
           show: true,
           lineStyle: {
             width: 18,
-            color: colorStops,
+            color: colorStops.value,
           },
         },
         pointer: {

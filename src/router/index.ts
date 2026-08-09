@@ -1,6 +1,7 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { APP_NAME } from '@/constants'
 
 /**
  * 懒加载包装：当路由组件 chunk 加载失败时（通常因部署更新后旧 chunk 已从线上移除，
@@ -73,6 +74,25 @@ const routes: RouteRecordRaw[] = [
   },
 ]
 
+/** 主导航菜单项（侧边栏与移动端抽屉共用） */
+export interface NavMenuItem {
+  index: string
+  icon: string
+  label: string
+}
+
+/**
+ * 主导航菜单：侧边栏 / 移动端抽屉共用，与上方路由 children 一一对应。
+ * 新增页面时需同时在此与路由 meta 中维护（index 即路由路径）。
+ */
+export const NAV_MENUS: NavMenuItem[] = [
+  { index: '/home', icon: 'HomeFilled', label: '项目介绍' },
+  { index: '/input', icon: 'Edit', label: '数据录入' },
+  { index: '/result', icon: 'DataAnalysis', label: '评估结果' },
+  { index: '/dashboard', icon: 'PieChart', label: '数据看板' },
+  { index: '/team', icon: 'UserFilled', label: '团队介绍' },
+]
+
 const router = createRouter({
   history: createWebHashHistory(),
   routes,
@@ -94,11 +114,11 @@ router.beforeEach((to) => {
   return true
 })
 
-// 页面标题更新
+// 页面标题更新（统一以「页面 - 应用名」拼接）
 router.afterEach((to) => {
   const title = to.meta.title as string
   if (title) {
-    document.title = `${title} - 涉农信贷风控系统`
+    document.title = `${title} - ${APP_NAME}`
   }
 })
 

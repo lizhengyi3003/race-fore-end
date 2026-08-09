@@ -1,3 +1,7 @@
+<!--
+  评估结果页：信用评分仪表盘 / 风险等级 / 违约概率 / 授信建议 / 指标贡献图 / 前三项扣分原因，
+  支持打印报告、查看原始表单、历史评估记录（分页/查看/删除）。
+-->
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -8,6 +12,7 @@ import ScoreGauge from '@/components/ScoreGauge.vue'
 import RiskBadge from '@/components/RiskBadge.vue'
 import { deleteRiskRecord, getRiskRecord, getRiskRecords } from '@/api/risk'
 import type { AssessmentRecordDetail, AssessmentRecordItem } from '@/api/types'
+import { APP_FULL_NAME, APP_VERSION } from '@/constants'
 
 const router = useRouter()
 const riskStore = useRiskStore()
@@ -183,7 +188,8 @@ function initBarChart() {
   const chart = echarts.init(barChartRef.value)
   barChart = chart
 
-  const contribs = result.value.contributions.sort((a, b) => b.score - a.score)
+  // 拷贝后排序，避免原地修改 store 中的共享数组
+  const contribs = sortedContribs.value
   const factorCount = contribs.length
 
   chart.setOption({
@@ -444,7 +450,7 @@ function goBack() {
       <div class="pr-header">
         <h1>涉农小微企业信贷风险评估报告</h1>
         <p class="pr-meta">
-          报告编号：{{ reportNo }} ｜ 评估时间：{{ printDate }} ｜ 系统：涉农信贷风险智能评估系统 Demo v1.7
+          报告编号：{{ reportNo }} ｜ 评估时间：{{ printDate }} ｜ 系统：{{ APP_FULL_NAME }} Demo v{{ APP_VERSION }}
         </p>
       </div>
 

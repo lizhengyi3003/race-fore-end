@@ -3,6 +3,7 @@ import { onBeforeUnmount, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
+// 路由切换顶部进度条显示状态
 const routeLoading = ref(false)
 let hideTimer: ReturnType<typeof setTimeout> | null = null
 

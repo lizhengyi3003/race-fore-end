@@ -1,10 +1,27 @@
+<!--
+  团队介绍页：指导教师、团队成员与团队公约展示（静态数据）。
+-->
 <script setup lang="ts">
 interface TeamMember {
   name: string
   role: string
   roleTag: string
   desc: string
-  avatar: string
+}
+
+/** 角色标签 → Element Plus tag 颜色映射（避免模板嵌套三元） */
+const ROLE_TAG_TYPES: Record<string, 'danger' | 'primary' | 'success' | 'warning' | 'info'> = {
+  负责人: 'danger',
+  技术: 'primary',
+  金融: 'success',
+  数据: 'warning',
+  农业: 'success',
+  文稿: 'info',
+  辅助: 'warning',
+}
+
+function roleTagType(roleTag: string) {
+  return ROLE_TAG_TYPES[roleTag] || 'info'
 }
 
 const members: TeamMember[] = [
@@ -13,77 +30,66 @@ const members: TeamMember[] = [
     role: '项目总负责人 / 数学组首席建模手',
     roleTag: '负责人',
     desc: '金融学202505班。项目发起创始人、首席建模负责人，统筹团队整体工作，搭建涉农信贷统计模型框架，对接指导教师，统筹商业计划书与答辩筹备全流程。',
-    avatar: '',
   },
   {
     name: '李峥熠',
     role: '工具组核心成员',
     roleTag: '技术',
     desc: '计算机202506班。负责前端开发与全链路部署：搭建 Vue3 演示前端、封装评估 API，配置服务器与 Cloudflare 站点，完成前后端联调与项目上线。',
-    avatar: '',
   },
   {
     name: '何依暘',
     role: '金融场景核心成员',
     roleTag: '金融',
     desc: '投资学202501班。负责金融业务逻辑、风控方案设计，开展行业调研分析，完成场景论证。',
-    avatar: '',
   },
   {
     name: '樊子逸',
     role: '数学组数据助理',
     roleTag: '数据',
     desc: '信科202404班。承担调研数据清洗、数值运算工作，协助首席建模手开展指标检验、实证分析，支撑统计模型稳定运行。',
-    avatar: '',
   },
   {
     name: '隆泓宇',
     role: '农业场景核心成员',
     roleTag: '农业',
     desc: '智慧农业202502班。聚焦东北涉农产业，开展实地产业调研；搭建农业产业场景素材库，挖掘涉农经营主体融资痛点。',
-    avatar: '',
   },
   {
     name: '胡雯焘',
     role: '金融场景成员',
     roleTag: '金融',
     desc: '投资学202501班。协助金融研究、资料整理，配合完成场景论证。',
-    avatar: '',
   },
   {
     name: '贺彦端',
     role: '工具组数据质检员',
     roleTag: '技术',
     desc: '大数据202406班。协助开展代码测试、异常数据处理、数据接口封装；整理技术素材，配合完成系统调试。',
-    avatar: '',
   },
   {
     name: '李思琪',
     role: '金融组辅助成员',
     roleTag: '金融',
     desc: '金融学202505班。搜集金融行业资料、政策文献、市场案例；协助访谈调研，补充完善金融板块文字材料。',
-    avatar: '',
   },
   {
     name: '梁琳',
     role: '农业组辅助成员',
     roleTag: '农业',
     desc: '智慧农业202502班。负责问卷发放、问卷信息汇总整理；收集涉农产业资料，协助农业场景核心成员开展调研。',
-    avatar: '',
   },
   {
     name: '金杨羽立',
     role: '文稿政策分析师',
     roleTag: '文稿',
     desc: '工商管理202403班。统筹商业计划书撰写、全套竞赛 PPT 设计美化、申报材料整理；梳理东北振兴相关政策文献。',
-    avatar: '',
   },
   {
     name: '肖裕玲',
     role: '全局辅助员',
     roleTag: '辅助',
     desc: '负责跨组协调与全局辅助工作，协助资料整理、会议记录与赛事材料汇总，为各小组提供支持。',
-    avatar: '',
   },
 ]
 
@@ -159,7 +165,7 @@ const conventions = [
       <el-row :gutter="16">
         <el-col
           v-for="member in members"
-          :key="member.role"
+          :key="member.name"
           :xs="24"
           :sm="12"
           :md="8"
@@ -169,25 +175,7 @@ const conventions = [
           <div class="member-card info-card">
             <el-avatar :size="56" icon="UserFilled" class="member-avatar" />
             <h3 class="member-name">{{ member.name }}</h3>
-            <el-tag
-              :type="
-                member.roleTag === '负责人'
-                  ? 'danger'
-                  : member.roleTag === '技术'
-                    ? 'primary'
-                    : member.roleTag === '金融'
-                      ? 'success'
-                      : member.roleTag === '数据'
-                        ? 'warning'
-                        : member.roleTag === '农业'
-                          ? 'success'
-                          : member.roleTag === '辅助'
-                            ? 'warning'
-                            : 'info'
-              "
-              size="small"
-              effect="dark"
-            >
+            <el-tag :type="roleTagType(member.roleTag)" size="small" effect="dark">
               {{ member.roleTag }}
             </el-tag>
             <p class="member-role">{{ member.role }}</p>

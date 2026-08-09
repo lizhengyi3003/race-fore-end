@@ -7,6 +7,5 @@ import type { IndicatorTree } from './types'
  * 单独放宽超时（30s），避免在 15s 全局超时边缘被中止导致表单加载失败。
  */
 export async function getIndicatorTree(): Promise<IndicatorTree> {
-  const res = await http.get<IndicatorTree>('/indicators/tree', { timeout: 30000 })
-  return res.data
+  return http.get<IndicatorTree>('/indicators/tree', { timeout: 30000 })
 }

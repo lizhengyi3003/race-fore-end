@@ -1,8 +1,14 @@
+<!--
+  应用整体布局：桌面端可折叠侧边栏 + 移动端抽屉菜单 + 顶部用户栏 + 页脚。
+  导航菜单来自 src/router 导出的 NAV_MENUS，应用名/版本/页脚文案来自 src/constants。
+-->
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
+import { NAV_MENUS } from '@/router'
+import { APP_NAME, APP_VERSION_BADGE, FOOTER_TEXT } from '@/constants'
 
 const router = useRouter()
 const route = useRoute()
@@ -13,14 +19,6 @@ const isCollapsed = ref(false)
 const isMobile = ref(window.innerWidth <= 992)
 const mobileMenuOpen = ref(false)
 
-const menus = [
-  { index: '/home', icon: 'HomeFilled', label: '项目介绍' },
-  { index: '/input', icon: 'Edit', label: '数据录入' },
-  { index: '/result', icon: 'DataAnalysis', label: '评估结果' },
-  { index: '/dashboard', icon: 'PieChart', label: '数据看板' },
-  { index: '/team', icon: 'UserFilled', label: '团队介绍' },
-]
-
 function updateIsMobile() {
   isMobile.value = window.innerWidth <= 992
   if (!isMobile.value) {
@@ -28,9 +26,7 @@ function updateIsMobile() {
   }
 }
 
-const activeMenu = computed(() => {
-  return route.path
-})
+const activeMenu = computed(() => route.path)
 
 const userLabel = computed(() => authStore.displayName || authStore.user?.username || '')
 
@@ -71,20 +67,19 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateIsMobile))
         <el-icon :size="28" color="#fff" class="logo-icon">
           <TrendCharts />
         </el-icon>
-        <span v-show="!isCollapsed" class="logo-text">涉农风控系统</span>
+        <span v-show="!isCollapsed" class="logo-text">{{ APP_NAME }}</span>
       </div>
 
       <el-menu
         :default-active="activeMenu"
         :collapse="isCollapsed"
-        :router="false"
         background-color="#1a1a2e"
         text-color="#bfcbd9"
         active-text-color="#4c956c"
         class="aside-menu"
         @select="navigateTo"
       >
-        <el-menu-item v-for="m in menus" :key="m.index" :index="m.index">
+        <el-menu-item v-for="m in NAV_MENUS" :key="m.index" :index="m.index">
           <el-icon><component :is="m.icon" /></el-icon>
           <span>{{ m.label }}</span>
         </el-menu-item>
@@ -97,25 +92,24 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateIsMobile))
       direction="ltr"
       size="220px"
       :with-header="false"
-      :modal-class="'mobile-drawer-modal'"
+      modal-class="mobile-drawer-modal"
       class="mobile-drawer"
     >
       <div class="aside-header mobile-drawer-header">
         <el-icon :size="28" color="#fff" class="logo-icon">
           <TrendCharts />
         </el-icon>
-        <span class="logo-text">涉农风控系统</span>
+        <span class="logo-text">{{ APP_NAME }}</span>
       </div>
       <el-menu
         :default-active="activeMenu"
-        :router="false"
         background-color="#1a1a2e"
         text-color="#bfcbd9"
         active-text-color="#4c956c"
         class="aside-menu"
         @select="navigateTo"
       >
-        <el-menu-item v-for="m in menus" :key="m.index" :index="m.index">
+        <el-menu-item v-for="m in NAV_MENUS" :key="m.index" :index="m.index">
           <el-icon><component :is="m.icon" /></el-icon>
           <span>{{ m.label }}</span>
         </el-menu-item>
@@ -135,11 +129,11 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateIsMobile))
             <Expand v-else />
           </el-icon>
           <span class="header-title">{{
-            isMobile ? '涉农风控系统' : '基于多元统计模型的涉农小微企业信贷风险智能评估系统'
+            isMobile ? APP_NAME : '基于多元统计模型的涉农小微企业信贷风险智能评估系统'
           }}</span>
         </div>
         <div class="header-right">
-          <el-tag v-if="!isMobile" type="success" effect="dark" round>Demo v1.7</el-tag>
+          <el-tag v-if="!isMobile" type="success" effect="dark" round>{{ APP_VERSION_BADGE }}</el-tag>
           <el-dropdown trigger="click" @command="(cmd: string) => cmd === 'logout' && handleLogout()">
             <div class="user-info">
               <el-icon :size="18"><UserFilled /></el-icon>
@@ -169,7 +163,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateIsMobile))
 
       <!-- 底部 -->
       <el-footer class="app-footer">
-        <span>© 2026 涉农信贷风控系统 · "挑战杯"创业计划竞赛 · 东北乡村振兴</span>
+        <span>{{ FOOTER_TEXT }}</span>
       </el-footer>
     </el-container>
   </el-container>
