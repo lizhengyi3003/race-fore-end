@@ -16,6 +16,13 @@ dist
 dist-ssr
 *.local
 
+# TypeScript build info
+*.tsbuildinfo
+
+# Wrangler / Cloudflare local cache
+.wrangler
+cloudflare/**/.wrangler
+
 # Local env overrides (never commit)
 .env*.local
 

@@ -12,7 +12,7 @@ export const APP_NAME = '涉农信贷风控系统'
 export const APP_FULL_NAME = '涉农小微企业信贷风险智能评估系统'
 
 /** 当前版本号（与 package.json 的 version 字段同步维护） */
-export const APP_VERSION = '1.8.0'
+export const APP_VERSION = '1.9.0'
 
 /** 页面头部版本徽标文案 */
 export const APP_VERSION_BADGE = `Demo v${APP_VERSION}`
