@@ -37,3 +37,20 @@ cloudflare/**/.wrangler
 *.njsproj
 *.sln
 *.sw?
+
+# 密钥与证书（防止误提交）
+*.pem
+*.key
+*.crt
+*.p12
+
+# 构建/测试缓存
+.eslintcache
+coverage/
+playwright-report/
+test-results/
+
+# Windows 系统文件
+Thumbs.db
+ehthumbs.db
+Desktop.ini
