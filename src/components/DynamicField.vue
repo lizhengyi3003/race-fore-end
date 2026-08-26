@@ -1,43 +1,36 @@
 <!--
   动态指标字段组件：按 indicator_type 渲染数值 / 枚举 / 布尔 / 文本控件，
-  带「特色」「一票否决」标签，blur/change 即时校验。
+  带「特色」「一票否决」标签。
+  校验交互：错误提示仅在提交后由父组件传入（error），用户填写即清除（clear-error）。
 -->
 <script setup lang="ts">
-import { ref, watch } from 'vue'
 import type { PropType } from 'vue'
 import type { IndicatorField } from '@/api/types'
-import { validateIndicatorValue } from '@/utils/validateIndicator'
 
 const props = defineProps({
   field: { type: Object as PropType<IndicatorField>, required: true },
   modelValue: { type: String, default: '' },
+  // 提交后由父组件传入的校验错误：仅点击提交后显示，填写后即清除
+  error: { type: String, default: '' },
 })
-const emit = defineEmits<{ (e: 'update:modelValue', v: string): void }>()
-
-const errorMsg = ref('')
+const emit = defineEmits<{
+  (e: 'update:modelValue', v: string): void
+  (e: 'clear-error'): void
+}>()
 
 function setVal(v: string | number | boolean | undefined | null) {
-  emit('update:modelValue', v === undefined || v === null ? '' : String(v))
+  const str = v === undefined || v === null ? '' : String(v)
+  emit('update:modelValue', str)
+  // 填写即清除该字段的提交错误提示（实现“填写完成后提示消失”）
+  emit('clear-error')
 }
-
-function validate() {
-  errorMsg.value = validateIndicatorValue(props.field, props.modelValue)
-}
-
-// 值被清空（如重置）时同步清除错误
-watch(
-  () => props.modelValue,
-  (nv) => {
-    if ((nv ?? '') === '') errorMsg.value = ''
-  }
-)
 </script>
 
 <template>
   <el-form-item
     :label="field.name"
     :required="field.required && field.indicator_type !== '文本'"
-    :error="errorMsg"
+    :error="error"
     class="dynamic-field"
   >
     <template #label>
@@ -58,7 +51,6 @@ watch(
         :placeholder="field.value_range"
         style="width: 100%"
         @update:model-value="setVal"
-        @blur="validate"
       />
       <span v-if="field.unit && field.unit !== '—'" class="unit">{{ field.unit }}</span>
     </div>
@@ -70,7 +62,6 @@ watch(
       :placeholder="field.value_range"
       style="width: 100%"
       @update:model-value="setVal"
-      @change="validate"
     >
       <el-option v-for="o in field.options" :key="o" :label="o" :value="o" />
     </el-select>
@@ -80,7 +71,6 @@ watch(
       v-else-if="field.indicator_type === '布尔'"
       :model-value="modelValue"
       @update:model-value="setVal"
-      @change="validate"
     >
       <el-radio value="是">是</el-radio>
       <el-radio value="否">否</el-radio>
@@ -92,7 +82,6 @@ watch(
       :model-value="modelValue"
       :placeholder="field.value_range"
       @update:model-value="setVal"
-      @blur="validate"
     />
   </el-form-item>
 </template>

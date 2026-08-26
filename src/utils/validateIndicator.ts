@@ -37,3 +37,16 @@ export function validateIndicatorMap(fields: IndicatorField[], values: Record<st
   }
   return errors
 }
+
+/** 校验一组指标，返回 { 指标code: 错误信息 }（用于提交后在对应字段下方显示错误） */
+export function validateIndicatorFieldMap(
+  fields: IndicatorField[],
+  values: Record<string, string | undefined>,
+): Record<string, string> {
+  const errors: Record<string, string> = {}
+  for (const f of fields) {
+    const err = validateIndicatorValue(f, values[f.code])
+    if (err) errors[f.code] = err
+  }
+  return errors
+}

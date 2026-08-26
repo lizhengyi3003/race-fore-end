@@ -11,7 +11,7 @@ import { getIndicatorTree } from '@/api/indicator'
 import type { CategoryNode, IndicatorField } from '@/api/types'
 import DynamicField from '@/components/DynamicField.vue'
 import MixedRatioSlider from '@/components/MixedRatioSlider.vue'
-import { validateIndicatorMap } from '@/utils/validateIndicator'
+import { validateIndicatorFieldMap } from '@/utils/validateIndicator'
 
 const router = useRouter()
 const riskStore = useRiskStore()
@@ -22,6 +22,14 @@ const submitting = ref(false)
 const loadError = ref(false)
 const treeData = ref<CategoryNode[]>([])
 const basicFields = ref<IndicatorField[]>([])
+
+// ---------- 提交后字段级错误（仅点击提交后显示，填写后清除）----------
+const fieldErrors = reactive<Record<string, string>>({})
+const enterpriseNameError = ref('')
+
+function clearFieldError(code: string) {
+  if (fieldErrors[code]) delete fieldErrors[code]
+}
 
 // ---------- 基本信息 ----------
 const enterpriseName = ref('')
@@ -172,6 +180,7 @@ function retryLoad() {
 // ---------- 提交 ----------
 async function handleSubmit() {
   if (!enterpriseName.value.trim()) {
+    enterpriseNameError.value = '请填写企业名称'
     ElMessage.warning('请填写企业名称')
     return
   }
@@ -179,17 +188,21 @@ async function handleSubmit() {
     ElMessage.warning('请至少勾选 1 个具体营业类型')
     return
   }
-  // 校验全部展示指标（基本项 + 勾选路径指标）
+  // 校验全部展示指标（基本项 + 勾选路径指标），错误映射到对应字段下方显示
   const allFields: IndicatorField[] = [...basicFields.value]
   displayGroups.value.forEach((g) => allFields.push(...g.fields))
-  const errors = validateIndicatorMap(allFields, values)
-  if (errors.length) {
-    const shown = errors
+  const errors = validateIndicatorFieldMap(allFields, values)
+  const errorList = Object.values(errors)
+  if (errorList.length) {
+    // 刷新字段级错误（提交后显示，填写后由 clear-error 清除）
+    Object.keys(fieldErrors).forEach((k) => delete fieldErrors[k])
+    Object.assign(fieldErrors, errors)
+    const shown = errorList
       .slice(0, 5)
       .map((e) => `· ${e}`)
       .join('\n')
     ElMessage.error(
-      `存在 ${errors.length} 处输入错误，请修正后再提交：\n${shown}${errors.length > 5 ? `\n… 还有 ${errors.length - 5} 处` : ''}`
+      `存在 ${errorList.length} 处输入错误，请修正后再提交：\n${shown}${errorList.length > 5 ? `\n… 还有 ${errorList.length - 5} 处` : ''}`
     )
     return
   }
@@ -221,6 +234,7 @@ async function handleSubmit() {
 
 function handleReset() {
   enterpriseName.value = ''
+  enterpriseNameError.value = ''
   checkedLeaves.value = []
   mixedRatios.value = {}
   treeRef.value?.setCheckedKeys([])
@@ -228,6 +242,7 @@ function handleReset() {
   basicFields.value.forEach((f) => {
     values[f.code] = ''
   })
+  Object.keys(fieldErrors).forEach((k) => delete fieldErrors[k])
 }
 
 onMounted(init)
@@ -256,8 +271,13 @@ onMounted(init)
         <el-form label-width="110px" label-position="left" class="basic-form">
           <el-row :gutter="20">
             <el-col :xs="24" :md="24">
-              <el-form-item label="企业名称" required>
-                <el-input v-model="enterpriseName" placeholder="企业/合作社/家庭农场/个体户全称" maxlength="50" />
+              <el-form-item label="企业名称" required :error="enterpriseNameError">
+                <el-input
+                  v-model="enterpriseName"
+                  placeholder="企业/合作社/家庭农场/个体户全称"
+                  maxlength="50"
+                  @input="enterpriseNameError = ''"
+                />
               </el-form-item>
             </el-col>
           </el-row>
@@ -322,7 +342,12 @@ onMounted(init)
             <el-collapse-item name="basic" title="展开 / 收起基本项">
               <el-row :gutter="20">
                 <el-col v-for="f in basicFields" :key="f.code" :xs="24" :md="12" :lg="8">
-                  <DynamicField v-model="values[f.code]" :field="f" />
+                  <DynamicField
+                    v-model="values[f.code]"
+                    :field="f"
+                    :error="fieldErrors[f.code] || ''"
+                    @clear-error="clearFieldError(f.code)"
+                  />
                 </el-col>
               </el-row>
             </el-collapse-item>
@@ -344,7 +369,12 @@ onMounted(init)
             >
               <el-row :gutter="20">
                 <el-col v-for="f in g.fields" :key="f.code" :xs="24" :md="12" :lg="8">
-                  <DynamicField v-model="values[f.code]" :field="f" />
+                  <DynamicField
+                    v-model="values[f.code]"
+                    :field="f"
+                    :error="fieldErrors[f.code] || ''"
+                    @clear-error="clearFieldError(f.code)"
+                  />
                 </el-col>
               </el-row>
             </el-collapse-item>
