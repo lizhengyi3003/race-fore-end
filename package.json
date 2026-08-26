@@ -3,6 +3,27 @@
   "private": true,
   "version": "1.9.0",
   "type": "module",
+  "description": "涉农小微企业信贷风险智能评估系统 - 竞赛演示前端（Vue3 + Vite + Element Plus）",
+  "keywords": [
+    "涉农信贷",
+    "信用评分",
+    "风险控制",
+    "小微企业",
+    "农业金融",
+    "风控系统",
+    "Vue3",
+    "Vite"
+  ],
+  "license": "UNLICENSED",
+  "author": "涉农信贷风控系统项目组",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lizhengyi3003/race-fore-end.git"
+  },
+  "engines": {
+    "node": ">=20.19.0",
+    "npm": ">=10"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
