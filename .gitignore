@@ -38,7 +38,7 @@ cloudflare/**/.wrangler
 *.sln
 *.sw?
 
-# 密钥与证书（防止误提交）
+# 密钥与证书
 *.pem
 *.key
 *.crt

@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.9.0",
   "type": "module",
-  "description": "涉农小微企业信贷风险智能评估系统 - 竞赛演示前端（Vue3 + Vite + Element Plus）",
+  "description": "涉农小微企业信贷风险智能评估系统（Vue3 + Vite + Element Plus）",
   "keywords": [
     "涉农信贷",
     "信用评分",

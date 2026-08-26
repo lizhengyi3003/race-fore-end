@@ -14,8 +14,6 @@
 *.woff2 binary
 *.ttf binary
 *.otf binary
-
-# 其余常见二进制格式（防止行尾转换/文本化误判）
 *.pdf binary
 *.zip binary
 *.rar binary
