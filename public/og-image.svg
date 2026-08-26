@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1b4d3a"/>
+      <stop offset="100%" stop-color="#2c6e49"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <!-- 系统图标 -->
+  <g transform="translate(90, 150) scale(3.2)">
+    <rect width="32" height="32" rx="7" fill="#ffffff" opacity="0.95"/>
+    <path d="M16 6c-4.4 0-8 2.5-8 7 0 4 3 7.5 7 8.9V28h2v-6.1c4-1.4 7-4.9 7-8.9 0-4.5-3.6-7-8-7z" fill="#2c6e49"/>
+  </g>
+  <!-- 主标题 -->
+  <text x="90" y="470" font-family="PingFang SC, Microsoft YaHei, Noto Sans SC, sans-serif" font-size="62" font-weight="bold" fill="#ffffff">涉农小微企业信贷风险智能评估系统</text>
+  <!-- 副标题 -->
+  <text x="90" y="540" font-family="PingFang SC, Microsoft YaHei, Noto Sans SC, sans-serif" font-size="30" fill="#a7d2b6">多元统计模型 · 四层动态指标体系 · 信用评分与授信建议</text>
+</svg>

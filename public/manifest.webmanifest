@@ -1,0 +1,16 @@
+{
+  "name": "涉农小微企业信贷风险智能评估系统",
+  "short_name": "涉农信贷风控",
+  "description": "面向东北县域农商行的涉农信贷风险智能评估系统：信用评分、风险等级与授信建议。",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2c6e49",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
